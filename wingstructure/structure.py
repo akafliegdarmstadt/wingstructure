@@ -3,12 +3,23 @@ from shapely.ops import cascaded_union
 import numpy as np
 
 
-class SectionFeature:
-    pass
+class SectionFeature(object):
+    def __init__(self):
+        self._shell = None
+
+    def update(self):
+        if self._shell:
+
+            self._update(self)
+
+        else:
+
+            raise Exception('To update feature it has to be part of structure!')
 
 
 class SparI(SectionFeature):
     def __init__(self, relpos: float, flangethickness: float, webthickness: float, width: float, density: float):
+        super().__init__()
         self._flangethickness = flangethickness
         self._webthickness = webthickness
         self._width = width
@@ -21,7 +32,9 @@ class SparI(SectionFeature):
 
         self.geometry = None
 
-    def update(self, shell):
+    def _update(self):
+        shell = self._shell
+
         xmin, xmax = shell.geometry.bounds[0], shell.geometry.bounds[2]
 
         pos = xmin + (xmax - xmin) * self._pos
@@ -37,44 +50,41 @@ class SparI(SectionFeature):
 
         self.geometry = cascaded_union([self.flangebottom, self.flangetop, self.web])
 
-    def mass(self) -> float:
+    def _sec_mass(self) -> float:
         flangeweight = (self.flangebottom.length + self.flangetop.length) * self._flangethickness * self._density
         webweight = self.web.length * self._webthickness * self._density
 
         return flangeweight+webweight
 
-    def centerofgravity(self):
+    def _sec_cg(self):
         flangetop_weighted_cg = np.array(self.flangetop.centroid) * self.flangetop.length * self._flangethickness * self._density
         flangebottom_weighted_cg = np.array(self.flangebottom.centroid) * self.flangebottom.length * self._flangethickness* self._density
         web_cg = np.array(self.web.centroid) * self.web.length * self._webthickness * self._density
 
-        return (flangebottom_weighted_cg + flangetop_weighted_cg + web_cg) / self.mass()
+        return (flangebottom_weighted_cg + flangetop_weighted_cg + web_cg) / self._sec_mass()
 
 
 class Shell(SectionFeature):
-    def __init__(self, airfoil: np.array, thickness: float,  density: float):
+    def __init__(self, winggeometry, airfoildb, thickness: float, density: float):
 
-        try:
-            self.geometry = LineString(airfoil)
-        except:
-            raise ValueError('Parameter airfoil does not match.')
-
+        self.winggeometry = winggeometry
+        self.airfoildb = airfoildb
         self.thickness = thickness
         self.density = density
 
-    def mass(self) -> float:
-        return self.geometry.length*self.thickness*self.density
+    def mass(self, y: float) -> float:
+        return self.geometry(y).length*self.thickness*self.density
 
-    def centerofgravity(self) -> np.array:
-        return np.array(self.geometry.centroid)
+    def _sec_cg(self, y) -> np.array:
+        return np.array(self.geometry(y).centroid)
 
-    def interiorheight(self, xmin, xmax) -> np.array:
+    def interiorheight(self, y: float, x_min: float, x_max: float) -> np.array:
 
-        bounds = self.geometry.bounds
+        bounds = self.geometry(y).bounds
 
-        poly = Polygon([(xmin, bounds[1]-0.1), (xmax, bounds[1]-0.1), (xmax, bounds[3]+0.1), (xmin, bounds[3]+0.1)])
+        poly = Polygon([(x_min, bounds[1] - 0.1), (x_max, bounds[1] - 0.1), (x_max, bounds[3] + 0.1), (x_min, bounds[3] + 0.1)])
 
-        intersection = self.geometry.intersection(poly)
+        intersection = self.geometry(y).intersection(poly)
 
         y = np.zeros((2, 2))
 
@@ -90,8 +100,16 @@ class Shell(SectionFeature):
 
         return top, bottom
 
+    def geometry(self, y):
+        try:
+            airfoil_str = self.winggeometry.airfoil_at(y)
+            airfoil = self.airfoildb[airfoil_str]*self.winggeometry.chord_at(y)
+            return LineString(airfoil)
+        except:
+            raise ValueError('Error while creating geometry.')
 
-class Section:
+
+class Structure(object):
     def __init__(self, shell):
 
         self._shell = shell
@@ -101,11 +119,12 @@ class Section:
 
     def addfeature(self, feature: SectionFeature) -> None:
         self._features.append(feature)
+        self._features[-1].shell = self._shell
 
-    def mass(self) -> float:
+    def _sec_mass(self, y) -> float:
         return self._shell.mass() + sum([feature.mass() for feature in self._features])
 
-    def centerofgravity(self) -> np.array:
+    def _sec_cg(self, y) -> np.array:
         shell_weighted_cg = self._shell.mass() * self._shell.centerofgravity()
         features_weighted_cg = sum([feature.mass() * feature.centerofgravity() for feature in self._features])
 

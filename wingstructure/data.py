@@ -6,27 +6,23 @@ import numpy as np
 
 Point = namedtuple('Point','x y z')
 
-def dict2pos(adict):
-    x = adict.get('x',0)
-    y = adict.get('y', 0)
-    z = adict.get('z', 0)
-    return Point(x, y, z)
 
-class Section:
+class Section(object):
 
-    def __init__(self, pos: Point, chord: float, alpha: float):
+    def __init__(self, pos: Point, chord: float, alpha: float, airfoil: str):
         self.pos = pos
         self.chord = chord
+        self.airfoil = airfoil
 
-    def __lt__(self, other: super()) -> bool:
+    def __lt__(self, other) -> bool:
         return self.pos.x < other.pos.x
 
     def __eq__(self, other):
         return self.pos.x == other.pos.x
 
 
-class Wing:
-    """describes symmetric calculators"""
+class Wing(object):
+    """describes symmetric wing"""
 
     def __init__(self, pos):
         self.sections = SortedList()
@@ -88,6 +84,24 @@ class Wing:
     def span_width(self) -> float:
         """Calculate the span width of wing."""
         return 2 * max((section.pos.y for section in self.sections))
+
+    def chord_at(self, y:float) -> float:
+        """Calculates the chord depth at given span position"""
+
+        y_positions = [section.pos.y for section in self.sections]
+        chord_lengths = [section.chord for section in self.sections]
+
+        return np.interp(y, y_positions, chord_lengths)
+
+
+    def airfoil_at(self, y: float) -> str:
+        """Lookup airfoil at given span position"""
+
+        y_positions = [section.pos.y for section in self.sections]
+
+        airfoil_index = np.argmin(np.array(y_positions)-y)
+
+        return self.sections[airfoil_index].airfoil
 
 
 class Plane:
