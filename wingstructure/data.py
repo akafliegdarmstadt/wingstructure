@@ -123,21 +123,37 @@ class Wing(object):
 
         return self.sections[airfoil_index].airfoil
 
-    def positions_x(self):
-        return [section.pos.x for section in self.sections]
+    def _svg_(self):
+        import svgwrite
 
-    def positions_y(self):
-        return [section.pos.y for section in self.sections]
+        dwg = svgwrite.Drawing()
+
+        # draw contourline
+        x_positions = [section.pos.x for section in self.sections]
+        y_positions = [section.pos.y for section in self.sections]
+        chord_lengths = [section.chord for section in self.sections]
+
+        leading_edge = [(x*100, y*100) for x, y in zip(x_positions, y_positions)]
+        trailing_edge = [((x+c)*100, y*100) for x, y, c in zip(x_positions, y_positions, chord_lengths)]
+
+        all_pts = leading_edge+trailing_edge[::-1]
+
+        contour = dwg.add(dwg.g(id='contour', stroke='black'))
+
+        contour.add(dwg.polyline(all_pts))
+
+        return dwg.tostring()
+
+        # TODO: fix this function
+
 
     def _repr_html_(self):
         return """
         <h3>Wing</h3>
-        <svg>
-        </svg>
+        {3}
         <p><b>spanwidth:</b>{0}</p>
         <p><b>wing area:</b>{1}</p>
-        <p><b>mac</b>{2}</p>""".format(self.span_width(), self.area(), self.mac().chord)
-        # TODO: create nice representation with svg
+        <p><b>mac</b>{2}</p>""".format(self.span_width(), self.area(), self.mac().chord, self._svg_())
 
 
 class Plane:
