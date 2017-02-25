@@ -28,6 +28,23 @@ class Wing(object):
         self.sections = SortedList()
         self.pos = pos
 
+    @classmethod
+    def fast_creation(cls, span_positions: list, chord_lengths: list, offsets:list, twists:list):
+        """Generates a Wing object faster than through adding sections manually"""
+
+        pos1 = Point(0, 0, 0)
+        wing1 = cls(pos1)
+
+        data = zip(span_positions, chord_lengths, offsets, twists)
+
+        for span_position, chord_length, offset, twist in data:
+            pos = Point(offset, span_position, 0)
+            section = Section(pos, chord_length, twist, None)
+
+            wing1.add_section(section)
+
+        return wing1
+
     def add_section(self, section: Section):
 
         self.sections.add(section)
@@ -38,7 +55,7 @@ class Wing(object):
         span_positions = [section.pos.y for section in self.sections]
         chord_lengths = [section.chord for section in self.sections]
 
-        area = np.trapz(span_positions, chord_lengths)
+        area = np.trapz(chord_lengths, span_positions)
 
         return area
 
@@ -55,15 +72,16 @@ class Wing(object):
                 if last is not None:
                     x_old, y_old, chord_old = last
                     span = y - y_old
+                    area = (chord_old+chord) * span / 2
                     taper = chord / chord_old
                     taper1 = taper + 1
                     fraction = (taper + taper1) / (3 * taper1)
 
-                    mac = chord * (taper**2 + taper + 1) / (1.5 * taper1)
+                    mac = chord_old * (taper**2 + taper + 1) / (1.5 * taper1)
                     mac_x = x_old + fraction * (x - x_old)
                     mac_y = y_old + fraction * span
 
-                    yield (mac_x, mac_y, mac)
+                    yield (mac_x*area, mac_y*area, mac*area, area)
 
                 last = (x, y, chord)
 
@@ -71,7 +89,9 @@ class Wing(object):
         y_positions = [section.pos.y for section in self.sections]
         chord_lengths = [section.chord for section in self.sections]
 
-        res = np.array(generate_segment_macs(x_positions, y_positions, chord_lengths))
+        res = np.array(list(generate_segment_macs(x_positions, y_positions, chord_lengths)))
+
+        print(res)
 
         area = self.area()
 
@@ -79,7 +99,7 @@ class Wing(object):
         mac_y = sum(res[:, 1])/area
         mac = sum(res[:, 2])/area
 
-        return Section(Point(mac_x, mac_y, 0),  mac, 0)
+        return Section(Point(mac_x, mac_y, 0),  mac, 0, airfoil=None)
 
     def span_width(self) -> float:
         """Calculate the span width of wing."""
@@ -102,6 +122,22 @@ class Wing(object):
         airfoil_index = np.argmin(np.array(y_positions)-y)
 
         return self.sections[airfoil_index].airfoil
+
+    def positions_x(self):
+        return [section.pos.x for section in self.sections]
+
+    def positions_y(self):
+        return [section.pos.y for section in self.sections]
+
+    def _repr_html_(self):
+        return """
+        <h3>Wing</h3>
+        <svg>
+        </svg>
+        <p><b>spanwidth:</b>{0}</p>
+        <p><b>wing area:</b>{1}</p>
+        <p><b>mac</b>{2}</p>""".format(self.span_width(), self.area(), self.mac().chord)
+        # TODO: create nice representation with svg
 
 
 class Plane:
