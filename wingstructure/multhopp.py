@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
-from __future__ import division
 import numpy as np
 import scipy.optimize as optimize
 
 
-def multhopp(alpha, c_li, y_li, N_M=None,dcl=2*np.pi):
+def multhopp(alpha, c_li, y_li, N_M=None, dcl=2*np.pi):
+    alpha, N_M, v_ar, theta_ar, y_ar, chord_ar, dcl, b, AR = prepare_multhopp(alpha, c_li, y_li, N_M, dcl)
+    return solve_multhopp(alpha, y_ar, chord_ar, dcl, b, AR)
+
+
+def prepare_multhopp(alpha, c_li, y_li, N_M, dcl):
     """Berechnet Auftriebsverteilung nach dem Multhopp-Verfahren.
     
     :param alpha: Anstellwinkel der Fläche
@@ -23,34 +27,60 @@ def multhopp(alpha, c_li, y_li, N_M=None,dcl=2*np.pi):
     # Spannweite bestimmen
     b = 2*max(y_li)
 
+    # Flügelfläche bestimmen
+    S = 2 * np.trapz(y=c_li, x=y_li)
+
+    # Streckung bestimmen
+    AR = b ** 2 / S
+
     # Stützstellenanzahl
     if N_M is None:
-        S = 2*np.trapz( y= c_li, x = y_li)
-        AR = b**2/S
         N_M = int(round(AR)*4-1)  # muss ungerade sein, sollte 4*Streckung nicht überschreiten
 
-    # leeres N_MxN_M Array (Matrix) für Multhoppkoeffizienten
-    B = np.zeros((N_M, N_M)) 
-        
     # Vektor mit Indizes der Berechnungspunkte
     v_ar = np.arange(1,N_M+1)
-        
-    # Vektor der Stützstellen definieren
-    y_ar = b/2 * np.cos(v_ar*np.pi/(N_M+1))
-    
+
     # Thetas der Stützstellen
-    theta_ar = v_ar*np.pi/(N_M+1)
+    theta_ar = v_ar * np.pi / (N_M + 1)
+
+    # Vektor der Stützstellen definieren
+    y_ar = b/2 * np.cos(theta_ar)
     
     # Flügeltiefen
     chord_ar = np.interp(np.abs(y_ar), y_li, c_li)
 
-    # Auftriebsanstieg
     if not isinstance(dcl,np.ndarray):
         dcl *= np.ones(N_M)
     elif len(dcl) != N_M:
         dcl = np.interp(y_ar,y_li,dcl)
-    
-    # Berechnung der Multhopp Matrix / Multhoppkoeffizienten
+
+    # Anstellwinkel an den Stützstellen
+    if not isinstance(alpha, np.ndarray) or len(alpha)==1:
+        alpha = np.ones(N_M)*alpha
+    elif len(alpha) == len(y_li):
+        # interpolieren
+        alpha = np.interp(y_ar, y_li, alpha, left=alpha[0], right=0)
+    elif len(alpha) == len(y_ar):
+        pass
+    else:
+        print('error') #TODO gescheites Fehlerhandling
+
+    return alpha, N_M, v_ar, theta_ar, y_ar, chord_ar, dcl, b, AR
+
+
+def solve_multhopp(alpha, y_ar, chord_ar, dcl, b, AR):
+
+    N_M = len(y_ar)
+
+    v_ar = np.arange(1, N_M + 1)
+
+    # Thetas der Stützstellen
+    theta_ar = v_ar * np.pi / (N_M + 1)
+
+    # leeres N_MxN_M Array (Matrix) für Multhoppkoeffizienten
+    B = np.zeros((N_M, N_M))
+
+        # Berechnung der Multhopp Matrix / Multhoppkoeffizienten
     for v,y_v,theta_v,c,dcl_v in zip(v_ar,y_ar,theta_ar,chord_ar,dcl):
         for n,theta_n in zip(v_ar,theta_ar):
          
@@ -60,19 +90,10 @@ def multhopp(alpha, c_li, y_li, N_M=None,dcl=2*np.pi):
             # übrige Elemente
             else:
                 B[v-1,n-1]=-((1-(-1)**(v-n))/2*(np.sin(theta_n)/((N_M+1)*(np.cos(theta_n)-np.cos(theta_v))**2)))
-    
-    # Anstellwinkel an den Stützstellen
-    if not isinstance(alpha, np.ndarray) or len(alpha)==1:
-        alpha = np.ones(N_M)*alpha
-    elif len(alpha) == len(y_li):
-        # interpolieren
-        alpha = np.interp(y_ar, y_li, alpha, left=alpha[0], right=0)
-    else:
-        print('error') #TODO gescheites Fehlerhandling
 
     # Berechnung der lokalen Zirkulation
     gamma_ar = np.dot(np.linalg.inv(B),alpha)
-        
+
     # Gesamtauftriebsbeiwert
     C_A = np.pi*AR/(N_M+1)*sum(gamma_ar*np.sin(v_ar*np.pi/(N_M+1)))
     

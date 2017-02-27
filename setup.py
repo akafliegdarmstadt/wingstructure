@@ -26,7 +26,8 @@ setup(name='wingstructure',
     packages=['wingstructure', 'aerodynamic'],
     install_requires= [
         'numpy',
-        'shapely'
+        'shapely',
+        'svgwrite'
     ],
     zip_safe=False
     )

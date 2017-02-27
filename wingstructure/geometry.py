@@ -11,6 +11,7 @@ class Section(object):
 
     def __init__(self, pos: Point, chord: float, alpha: float, airfoil: str):
         self.pos = pos
+        self.alpha = alpha
         self.chord = chord
         self.airfoil = airfoil
 
@@ -29,23 +30,23 @@ class Wing(object):
         self.pos = pos
 
     @classmethod
-    def fast_creation(cls, span_positions: list, chord_lengths: list, offsets:list, twists:list):
+    def create_from_planform(cls, span_positions: list, chord_lengths: list, offsets: list, twists: list, airfoils: list):
         """Generates a Wing object faster than through adding sections manually"""
 
         pos1 = Point(0, 0, 0)
         wing1 = cls(pos1)
 
-        data = zip(span_positions, chord_lengths, offsets, twists)
+        data = zip(span_positions, chord_lengths, offsets, twists, airfoils)
 
-        for span_position, chord_length, offset, twist in data:
+        for span_position, chord_length, offset, twist, airfoil in data:
             pos = Point(offset, span_position, 0)
-            section = Section(pos, chord_length, twist, None)
+            section = Section(pos, chord_length, twist, airfoil)
 
             wing1.add_section(section)
 
         return wing1
 
-    def add_section(self, section: Section):
+    def add_section(self, section: Section) -> None:
 
         self.sections.add(section)
 
@@ -59,15 +60,18 @@ class Wing(object):
 
         return area
 
+    def aspect_ratio(self) -> float:
+        return self.span_width()**2/self.area()
+
     def mac(self) -> Section:
         """Calculate the mean aerodynamic chord of wing."""
 
-        def generate_segment_macs(x_positions, y_positions, chord_lenghts):
+        def generate_segment_macs(x_positions, y_positions, chord_lengths):
             """Generate the segments mean aerodynamic chord values."""
 
             last = None
 
-            for x, y, chord in zip(x_positions, y_positions, chord_lenghts):
+            for x, y, chord in zip(x_positions, y_positions, chord_lengths):
 
                 if last is not None:
                     x_old, y_old, chord_old = last
@@ -91,8 +95,6 @@ class Wing(object):
 
         res = np.array(list(generate_segment_macs(x_positions, y_positions, chord_lengths)))
 
-        print(res)
-
         area = self.area()
 
         mac_x = sum(res[:, 0])/area
@@ -105,14 +107,13 @@ class Wing(object):
         """Calculate the span width of wing."""
         return 2 * max((section.pos.y for section in self.sections))
 
-    def chord_at(self, y:float) -> float:
+    def chord_at(self, y: float or np.array) -> float:
         """Calculates the chord depth at given span position"""
 
         y_positions = [section.pos.y for section in self.sections]
         chord_lengths = [section.chord for section in self.sections]
 
         return np.interp(y, y_positions, chord_lengths)
-
 
     def airfoil_at(self, y: float) -> str:
         """Lookup airfoil at given span position"""
@@ -145,7 +146,6 @@ class Wing(object):
         return dwg.tostring()
 
         # TODO: fix this function
-
 
     def _repr_html_(self):
         return """

@@ -1,3 +1,4 @@
 from .structure import *
 from .multhopp import *
-from . import data
+from .geometry import Section, Wing
+from .analysis import wing_lift
