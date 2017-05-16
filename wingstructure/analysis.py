@@ -44,7 +44,7 @@ class LiftAnalysis(object):
             airfoil_db = dict()
             
             for airfoil in airfoils:
-                airfoil_db[airfoil] = Airfoils()
+                airfoil_db[airfoil] = Airfoil()
 
         self.basic_distribution = self._calculate_basic_distribution(wing, airfoil_db)
 
