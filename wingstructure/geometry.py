@@ -134,14 +134,12 @@ class Wing(object):
         y_positions = [section.pos.y for section in self.sections]
         chord_lengths = [section.chord for section in self.sections]
 
-        leading_edge = [(x*100, y*100) for x, y in zip(x_positions, y_positions)]
-        trailing_edge = [((x+c)*100, y*100) for x, y, c in zip(x_positions, y_positions, chord_lengths)]
+        leading_edge = [(-x*100, -y*100) for x, y in zip(x_positions, y_positions)]
+        trailing_edge = [(-(x+c)*100, -y*100) for x, y, c in zip(x_positions, y_positions, chord_lengths)]
 
         all_pts = leading_edge+trailing_edge[::-1]
 
-        contour = dwg.add(dwg.g(id='contour', stroke='black'))
-
-        contour.add(dwg.polyline(all_pts))
+        dwg.add(dwg.polygon(all_pts,fill='none',stroke='black'))
 
         return dwg.tostring()
 
