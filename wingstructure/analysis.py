@@ -37,7 +37,14 @@ def wing_lift(alpha: float, wing: Wing, airfoil_db: dict):
 
 class LiftAnalysis(object):
 
-    def __init__(self, wing: Wing, airfoil_db: dict):
+    def __init__(self, wing: Wing, airfoil_db: dict = None):
+        
+        if (airfoil_db == None):
+            airfoils = set([sec.airfoil for sec in wing.sections])
+            airfoil_db = dict()
+            
+            for airfoil in airfoils:
+                airfoil_db[airfoil] = Airfoils()
 
         self.basic_distribution = self._calculate_basic_distribution(wing, airfoil_db)
 
