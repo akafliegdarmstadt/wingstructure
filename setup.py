@@ -23,7 +23,7 @@ setup(name='wingstructure',
     author='helo',
     author_email='-',
     license='GPL 2.0',
-    packages=['wingstructure', 'aerodynamic'],
+    packages=['wingstructure'],
     install_requires= [
         'numpy',
         'shapely',
