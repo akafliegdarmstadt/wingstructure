@@ -89,7 +89,7 @@ def solve_multhopp(alpha, y_ar, chord_ar, dcl, b, AR):
                 B[v-1,v-1]= (N_M+1)/(4*np.sin(theta_v))+2*b/(dcl_v*c)
             # übrige Elemente
             else:
-                B[v-1,n-1]=-((1-(-1)**(v-n))/2*(np.sin(theta_n)/((N_M+1)*(np.cos(theta_n)-np.cos(theta_v))**2)))
+                B[v-1,n-1]=-((1-(-1.)**(v-n))/2*(np.sin(theta_n)/((N_M+1)*(np.cos(theta_n)-np.cos(theta_v))**2)))
 
     # Berechnung der lokalen Zirkulation
     gamma_ar = np.dot(np.linalg.inv(B),alpha)
