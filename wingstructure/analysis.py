@@ -85,3 +85,4 @@ class LiftAnalysis(object):
                                 wing.span_width(), wing.aspect_ratio())
 
         return result['c_a_li']/result['C_A']
+

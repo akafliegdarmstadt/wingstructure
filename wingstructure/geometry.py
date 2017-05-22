@@ -28,6 +28,7 @@ class Wing(object):
     def __init__(self, pos):
         self.sections = SortedList()
         self.pos = pos
+        self.root_pos = 0.0
 
     @classmethod
     def create_from_planform(cls, span_positions: list, chord_lengths: list, offsets: list, twists: list, airfoils: list):
@@ -50,15 +51,27 @@ class Wing(object):
 
         self.sections.add(section)
 
+    def set_root_pos(self, span_position: float) -> None:
+        self.root_pos = span_position
+
     def area(self) -> float:
         """Calculate area of the wing."""
 
         span_positions = [section.pos.y for section in self.sections]
         chord_lengths = [section.chord for section in self.sections]
-
+        
+        while self.root_pos > span_positions[0]:
+            last = (span_positions[0], chord_lengths[0])
+            
+            del(span_positions[0])
+            del(chord_lengths[0])
+        
+        if self.root_pos < span_positions[0]:
+            chord0 = self.root_pos-last[0]/(span_positions[0]-last[0])*(chord_lengths[0]-last[1])+last[1]
+        
         area = np.trapz(chord_lengths, span_positions)
 
-        return area
+        return 2*area # for both sides of wing
 
     def aspect_ratio(self) -> float:
         return self.span_width()**2/self.area()
@@ -73,7 +86,7 @@ class Wing(object):
 
             for x, y, chord in zip(x_positions, y_positions, chord_lengths):
 
-                if last is not None:
+                if last is not None and y > self.root_pos:
                     x_old, y_old, chord_old = last
                     span = y - y_old
                     area = (chord_old+chord) * span / 2
@@ -109,11 +122,14 @@ class Wing(object):
 
     def chord_at(self, y: float or np.array) -> float:
         """Calculates the chord depth at given span position"""
+        
+        if y < self.root_pos:
+            return 0.0
+        else:
+            y_positions = [section.pos.y for section in self.sections]
+            chord_lengths = [section.chord for section in self.sections]
 
-        y_positions = [section.pos.y for section in self.sections]
-        chord_lengths = [section.chord for section in self.sections]
-
-        return np.interp(y, y_positions, chord_lengths)
+            return np.interp(y, y_positions, chord_lengths)
 
     def airfoil_at(self, y: float) -> str:
         """Lookup airfoil at given span position"""
