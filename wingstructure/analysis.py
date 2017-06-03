@@ -48,11 +48,11 @@ class LiftAnalysis(object):
 
         self.basic_distribution = self._calculate_basic_distribution(wing, airfoil_db)
 
-        self.aileron_distribution = None
+        self.aileron_distribution = self._calculate_aileron_distribution(wing)
 
         self.flap_distribuiton = None
 
-        self.airbrake_distribution = None
+        self.airbrake_distribution = self._calculate_airbrake_distribution(wing)
 
     def calculate(self, lift):
 
@@ -70,19 +70,67 @@ class LiftAnalysis(object):
             alpha0 = airfoil_db[section.airfoil].alpha0
             alphas.append(section.alpha - alpha0)
 
-        n = int(round(wing.aspect_ratio()) * 4 - 1)
-        vs = np.arange(1, n + 1)
-        thetas = vs * np.pi / (n + 1)
-        self.calculation_positions = wing.span_width() / 2 * np.cos(np.arange(1, n + 1) * np.pi / (n + 1))
+        self.n = int(round(wing.aspect_ratio()) * 4 - 1)
+        vs = np.arange(1, self.n + 1)
+        thetas = vs * np.pi / (self.n + 1)
+        self.calculation_positions = wing.span_width() / 2 * np.cos(np.arange(1, self.n + 1) * np.pi / (self.n + 1))
         self.calculation_chord_lengths = interpolate.interp1d(self.span_positions, self.chord_lenghtes)(np.abs(self.calculation_positions))
         calculation_alphas = interpolate.interp1d(self.span_positions, alphas)(np.abs(self.calculation_positions))
 
         #print(chord_lenghtes, span_positions, calculation_chord_lengths)
 
         alphas = 1/180*np.pi + calculation_alphas
-
-        result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, np.array([2 * np.pi] * n),
+        
+        # TODO: use airfoils lift coefficient slope
+        result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, np.array([2 * np.pi] * self.n),
                                 wing.span_width(), wing.aspect_ratio())
 
         return result['c_a_li']/result['C_A']
+        
+    def _calculate_aileron_distribution(self, wing):
+        
+        results = {}
+        
+        for name, flap in wing.flaps.items():
+            
+            alphas = np.zeros(len(self.calculation_positions))
+            
+            for ii, span_pos in enumerate(self.calculation_positions):
+                
+                if flap.depth_at(span_pos) > 0:
+                    
+                    lambda_k = flap.depth_at(span_pos)
+                    
+                    eta_k = np.deg2rad(1)
+                    
+                    k = -2 / np.pi * ( np.sqrt( lambda_k * (1-lambda_k) )  + np.arcsin ( np.sqrt(lambda_k) ) )
+            
+                    eta_keff = 22.743 * np.arctan( 0.4715 * eta_k )
+                    
+                    alphas[ii] = -(0.75 * k - 0.25 * lambda_k ) * eta_keff
+                    
+            result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, np.array( [2*np.pi] *self.n),
+                                            wing.span_width(), wing.aspect_ratio())
+            
+            results[name] = result['c_a_li']
+    
+        return results
+        
+    def _calculate_airbrake_distribution(self, wing):
+        
+        alphas = np.zeros(self.n)
+        
+        for ii, span_pos in enumerate(self.calculation_positions):
+            
+            if wing.is_airbrake_pos( span_pos ):
+                #TODO: let user choose value
+                alphas[ii] = np.deg2rad(-12)
+            else:
+                alphas[ii] = 0
+        
+       
+        result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, np.array( [2*np.pi] *self.n),
+                                wing.span_width(), wing.aspect_ratio())
+        
+        return result['c_a_li']
 

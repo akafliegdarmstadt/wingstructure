@@ -169,6 +169,52 @@ class Wing(object):
         <p><b>wing area:</b>{1}</p>
         <p><b>mac</b>{2}</p>""".format(self.span_width(), self.area(), self.mac().chord, self._svg_())
 
+class Flap(object):
+    def __init__(self, span_pos_start, depth_start, span_pos_end, depth_end):
+        self.span_pos_start = span_pos_start
+        self.span_pos_end = span_pos_end
+        self.depth_start = depth_start
+        self.depth_end = depth_end
+        
+    def depth_at(self, span_pos):
+    
+        if not (self.span_pos_start <= abs(span_pos) <= self.span_pos_end):
+            return 0.0
+        else:
+            return self.depth_start+ (self.depth_end-self.depth_start)*(span_pos-self.span_pos_start)/(self.span_pos_end-self.span_pos_start)            
+        
+    def __lt__(self, other) -> bool:
+        return self.span_pos_start < other.span_pos_start
+
+    def __eq__(self, other):
+        return self.span_pos_start == other.span_pos_start
+
+class WingExt(Wing):
+    def __init__(self, pos):
+        super(WingExt, self).__init__(pos)
+        self.flaps = dict()
+        self.airbrake = None
+        
+    def set_flap(self, name, span_pos_start, span_pos_end, depth):
+        #TODO: allow linear depth gradient
+        
+        flap = Flap(span_pos_start, depth, span_pos_end, depth)
+        
+        self.flaps[name] = flap
+        
+    def set_airbrake(self, span_pos_start, span_pos_end):
+        if span_pos_end > span_pos_start:
+            self.airbrake = {'start': span_pos_start, 'end': span_pos_end}
+            
+    def is_airbrake_pos(self, span_pos: float) -> bool:
+        if self.airbrake is None:
+            return False
+        else:
+            if self.airbrake['start'] <= abs(span_pos) <= self.airbrake['end']:
+                return True
+            else:
+                return False
+                
 
 class Plane:
     def __init__(self, name, wing, hlw):
