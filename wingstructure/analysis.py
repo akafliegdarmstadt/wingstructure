@@ -48,15 +48,27 @@ class LiftAnalysis(object):
 
         self.basic_distribution = self._calculate_basic_distribution(wing, airfoil_db)
 
-        self.aileron_distribution = self._calculate_aileron_distribution(wing)
+        self.flaps_distribution, self.flaps_lift = self._calculate_aileron_distribution(wing)
 
-        self.flap_distribuiton = None
+        self.airbrake_distribution, self.airbrake_lift = self._calculate_airbrake_distribution(wing)
 
-        self.airbrake_distribution = self._calculate_airbrake_distribution(wing)
-
-    def calculate(self, lift):
-
-        return self.basic_distribution*lift
+    def calculate(self, lift, airbrake = False, flaps_deflection = []):
+        
+        distributions = np.zeros(self.n)
+        
+        if airbrake:
+            lift -= self.airbrake_lift
+            distributions += self.airbrake_distribution
+            
+        for flap_deflection in flaps_deflection:
+            flap_name = flap_deflection['flap_name']
+            if flap_deflection['flap_name'] in self.flaps_lift:
+                factor = 22.743 * np.arctan( 0.04715 * np.array(flap_deflection['deflection_values']) )
+                lift -= np.sum(self.flaps_lift[flap_name] * factor) / 2
+                flap_distribution = self.flaps_distribution[flap_name]
+                distributions += np.hstack( ( flap_distribution[:self.n//2]*factor[0], np.zeros(1), flap_distribution[self.n//2+1:]*factor[1]) ) 
+                
+        return self.basic_distribution*lift + distributions
 
     def _calculate_basic_distribution(self, wing, airfoil_db):
 
@@ -87,9 +99,10 @@ class LiftAnalysis(object):
 
         return result['c_a_li']/result['C_A']
         
-    def _calculate_aileron_distribution(self, wing):
+    def _calculate_aileron_distribution(self, wing, angle = 1):
         
-        results = {}
+        distributions = {}
+        lift = {}
         
         for name, flap in wing.flaps.items():
             
@@ -101,20 +114,21 @@ class LiftAnalysis(object):
                     
                     lambda_k = flap.depth_at(span_pos)
                     
-                    eta_k = np.deg2rad(1)
+                    eta_k = np.deg2rad(angle)
                     
                     k = -2 / np.pi * ( np.sqrt( lambda_k * (1-lambda_k) )  + np.arcsin ( np.sqrt(lambda_k) ) )
             
-                    eta_keff = 22.743 * np.arctan( 0.4715 * eta_k )
+                    eta_keff = 22.743 * np.arctan( 0.04715 * eta_k )
                     
                     alphas[ii] = -(0.75 * k - 0.25 * lambda_k ) * eta_keff
                     
             result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, np.array( [2*np.pi] *self.n),
                                             wing.span_width(), wing.aspect_ratio())
             
-            results[name] = result['c_a_li']
+            distributions[name] = result['c_a_li']
+            lift[name] = result['C_A']
     
-        return results
+        return distributions, lift
         
     def _calculate_airbrake_distribution(self, wing):
         
@@ -132,5 +146,5 @@ class LiftAnalysis(object):
         result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, np.array( [2*np.pi] *self.n),
                                 wing.span_width(), wing.aspect_ratio())
         
-        return result['c_a_li']
+        return result['c_a_li'], result['C_A']
 
