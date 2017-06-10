@@ -27,7 +27,8 @@ setup(name='wingstructure',
     install_requires= [
         'numpy',
         'shapely',
-        'svgwrite'
+        'svgwrite',
+        'sortedcontainers'
     ],
     zip_safe=False
     )
