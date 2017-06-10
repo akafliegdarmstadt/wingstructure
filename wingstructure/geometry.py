@@ -119,17 +119,14 @@ class Wing(object):
     def span_width(self) -> float:
         """Calculate the span width of wing."""
         return 2 * max((section.pos.y for section in self.sections))
-
+          
     def chord_at(self, y: float or np.array) -> float:
         """Calculates the chord depth at given span position"""
         
-        if y < self.root_pos:
-            return 0.0
-        else:
-            y_positions = [section.pos.y for section in self.sections]
-            chord_lengths = [section.chord for section in self.sections]
+        y_positions = [section.pos.y for section in self.sections]
+        chord_lengths = [section.chord for section in self.sections]
 
-            return np.interp(y, y_positions, chord_lengths)
+        return np.interp(np.abs(y), y_positions, chord_lengths)
 
     def airfoil_at(self, y: float) -> str:
         """Lookup airfoil at given span position"""
@@ -195,10 +192,9 @@ class WingExt(Wing):
         self.flaps = dict()
         self.airbrake = None
         
-    def set_flap(self, name, span_pos_start, span_pos_end, depth):
-        #TODO: allow linear depth gradient
+    def set_flap(self, name, span_pos_start, depth_start, span_pos_end, depth_end):
         
-        flap = Flap(span_pos_start, depth, span_pos_end, depth)
+        flap = Flap(span_pos_start, depth_start, span_pos_end, depth_end)
         
         self.flaps[name] = flap
         
@@ -215,7 +211,45 @@ class WingExt(Wing):
             else:
                 return False
                 
-
+    def plot(self):
+        import matplotlib.pyplot as plt
+        
+        # draw centerline 
+        plt.axvline(x=0, linestyle='-.')
+        
+        # draw sections
+        x_positions = []
+        y_positions = []
+        chord_lengths = []
+        
+        for section in self.sections:
+            x = section.pos.x
+            y = section.pos.y
+            chord = section.chord
+            
+            plt.plot((y, y), (-x, -x-chord), 'r')
+            x_positions.append(x)
+            y_positions.append(y)
+            chord_lengths.append(chord)
+        
+        # draw leading edge
+        plt.plot(y_positions, -np.array(x_positions), 'b' )
+        # draw trailing edge
+        plt.plot(y_positions, -np.array(x_positions)-np.array(chord_lengths), 'b')
+        
+        # draw flaps
+        for name, obj in self.flaps.items():
+            chords = np.interp(np.array((obj.span_pos_start, obj.span_pos_end)), y_positions, chord_lengths)
+            offsets = np.interp(np.array((obj.span_pos_start, obj.span_pos_end)), y_positions, x_positions)
+            
+            x = (obj.span_pos_start, obj.span_pos_start, obj.span_pos_end, obj.span_pos_end)
+            y = (chords[0]+offsets[0], offsets[0]+(1-obj.depth_start)*chords[0], (1-obj.depth_end)*chords[1]+offsets[1], chords[1]+offsets[1])
+            plt.plot(x, -np.array(y), 'g--')
+        # format 
+        plt.axis('equal')
+        plt.axis('off')
+        plt.xlim(-1, max(y_positions)+1)
+        
 class Plane:
     def __init__(self, name, wing, hlw):
         self.name = name
