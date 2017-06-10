@@ -22,7 +22,7 @@ class LiftAnalysis(object):
 
         self.airbrake_distribution, self.airbrake_lift = self._calculate_airbrake_distribution(wing)
 
-    def calculate(self, lift, airbrake = False, flaps_deflection = []):
+    def calculate(self, lift, airbrake = False, flap_deflections = {}):
         
         distributions = np.zeros(self.n)
         
@@ -30,10 +30,9 @@ class LiftAnalysis(object):
             lift -= self.airbrake_lift
             distributions += self.airbrake_distribution
             
-        for flap_deflection in flaps_deflection:
-            flap_name = flap_deflection['flap_name']
-            if flap_deflection['flap_name'] in self.flaps_lift:
-                factor = 22.743 * np.arctan( 0.04715 * np.array(flap_deflection['deflection_values']) )
+        for flap_name in flap_deflections:
+            if flap_name in self.flaps_lift:
+                factor = 22.743 * np.arctan( 0.04715 * np.array(flap_deflections[flap_name]) )
                 lift -= self.flaps_lift[flap_name] * np.sum(factor)
                 flap_distribution = self.flaps_distribution[flap_name]
                 distributions += flap_distribution*factor[0]+flap_distribution[::-1]*factor[1] 
