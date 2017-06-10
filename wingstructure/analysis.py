@@ -64,9 +64,9 @@ class LiftAnalysis(object):
             flap_name = flap_deflection['flap_name']
             if flap_deflection['flap_name'] in self.flaps_lift:
                 factor = 22.743 * np.arctan( 0.04715 * np.array(flap_deflection['deflection_values']) )
-                lift -= np.sum(self.flaps_lift[flap_name] * factor) / 2
+                lift -= self.flaps_lift[flap_name] * np.sum(factor)
                 flap_distribution = self.flaps_distribution[flap_name]
-                distributions += np.hstack( ( flap_distribution[:self.n//2]*factor[0], np.zeros(1), flap_distribution[self.n//2+1:]*factor[1]) ) 
+                distributions += flap_distribution*factor[0]+flap_distribution[::-1]*factor[1] 
                 
         return self.basic_distribution*lift + distributions
 
@@ -81,7 +81,9 @@ class LiftAnalysis(object):
             self.chord_lenghtes.append(section.chord)
             alpha0 = airfoil_db[section.airfoil].alpha0
             alphas.append(section.alpha - alpha0)
-
+        
+        #TODO: refine calculation grid
+        
         self.n = int(round(wing.aspect_ratio()) * 4 - 1)
         vs = np.arange(1, self.n + 1)
         thetas = vs * np.pi / (self.n + 1)
@@ -93,10 +95,16 @@ class LiftAnalysis(object):
 
         alphas = 1/180*np.pi + calculation_alphas
         
+        #TODO: solution for fuselages lift
+        #alphas[np.abs(self.calculation_positions) < wing.root_pos] = 0
+        dcl = np.array([2 * np.pi] * self.n)
+        #dcl[np.abs(self.calculation_positions) < wing.root_pos] = 1e-10
+        
         # TODO: use airfoils lift coefficient slope
-        result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, np.array([2 * np.pi] * self.n),
+        result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, dcl,
                                 wing.span_width(), wing.aspect_ratio())
-
+        
+        #print('Resulting C_L is {}'.format(result['C_A']))
         return result['c_a_li']/result['C_A']
         
     def _calculate_aileron_distribution(self, wing, angle = 1):
@@ -110,7 +118,7 @@ class LiftAnalysis(object):
             
             for ii, span_pos in enumerate(self.calculation_positions):
                 
-                if flap.depth_at(span_pos) > 0:
+                if flap.depth_at(span_pos) > 0 and span_pos > 0:
                     
                     lambda_k = flap.depth_at(span_pos)
                     
