@@ -11,10 +11,10 @@ class LiftAnalysis(object):
         
         if (airfoil_db == None):
             airfoils = set([sec.airfoil for sec in wing.sections])
-            airfoil_db = dict()
+            airfoil_db = self.airfoil_db = dict()
             
             for airfoil in airfoils:
-                airfoil_db[airfoil] = Airfoil()
+                self.airfoil_db[airfoil] = Airfoil()
 
         self.basic_distribution = self._calculate_basic_distribution(wing, airfoil_db)
 
@@ -95,7 +95,7 @@ class LiftAnalysis(object):
                     
                     k = -2 / np.pi * ( np.sqrt( lambda_k * (1-lambda_k) )  + np.arcsin ( np.sqrt(lambda_k) ) )
             
-                    eta_keff = 22.743 * np.arctan( 0.04715 * eta_k )
+                    eta_keff = self._calculate_eta_keff( eta_k )
                     
                     alphas[ii] = -(0.75 * k - 0.25 * lambda_k ) * eta_keff
                     
@@ -124,4 +124,60 @@ class LiftAnalysis(object):
                                 wing.span_width(), wing.aspect_ratio())
         
         return result['c_a_li'], result['C_A']
+        
+    
+    def _calculate_eta_keff(self, eta_k):
+    
+        return 22.743 * np.arctan( 0.04715 * eta_k )
+        
+    
+class LiftAndMomentAnalysis(LiftAnalysis):
+    def __init__(self, wing: Wing, airfoil_db: dict = None):
+        super().__init__(wing, airfoil_db)  
+        
+        cm_0 = [airfoil_db[sec.airfoil].cm0 for sec in wing.sections]
+        
+        self.moment_basic_distribution = np.interp(np.abs(self.calculation_positions), self.span_positions, cm_0)
+
+        self.moment_aileron_distributions = {}
+        
+        for name, flap in wing.flaps.items():
+            
+            moment_temp = np.zeros(self.n)
+            
+            for ii, span_pos in enumerate(self.calculation_positions):
+            
+                if flap.span_pos_start <= span_pos <= flap.span_pos_end:
+                
+                    lambda_k = flap.depth_at(span_pos)
+                    
+                    moment_temp[ii] = -1.5 * np.sqrt( lambda_k * ( 1 - lambda_k )**3 )
+           
+            self.moment_aileron_distributions[name] = moment_temp
+           
+    def calculate(self, lift: float, airbrake = False, flap_deflections = {}):
+        
+        #TODO: Moment airbrake - Zottel 4.45
+        
+        lift_distribution = super().calculate(lift, airbrake, flap_deflections)
+        
+        moment_distribution = np.zeros(self.n)
+        
+        moment_distribution += self.moment_basic_distribution
+        
+        for flap_name in flap_deflections:
+            
+            print(flap_name)
+            
+            if flap_name in self.moment_aileron_distributions:
+                
+                eta_k = np.array( flap_deflections[flap_name] )
+                
+                eta_keff = self._calculate_eta_keff( eta_k )
+                
+                temp_distribution = self.moment_aileron_distributions[flap_name]
+                
+                moment_distribution += (temp_distribution * eta_keff[0] + temp_distribution[::-1] * eta_keff[1])/2
+                
+        return lift_distribution, moment_distribution
 

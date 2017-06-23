@@ -178,7 +178,7 @@ class Flap(object):
         if not (self.span_pos_start <= abs(span_pos) <= self.span_pos_end):
             return 0.0
         else:
-            return self.depth_start+ (self.depth_end-self.depth_start)*(span_pos-self.span_pos_start)/(self.span_pos_end-self.span_pos_start)            
+            return self.depth_start+ (self.depth_end-self.depth_start)*(abs(span_pos)-self.span_pos_start)/(self.span_pos_end-self.span_pos_start)            
         
     def __lt__(self, other) -> bool:
         return self.span_pos_start < other.span_pos_start
