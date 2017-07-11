@@ -6,7 +6,40 @@ import numpy as np
 
 Point = namedtuple('Point','x y z')
 
-
+class Airfoil(object):
+    
+    def __init__(self, coords):
+        self.coords = coords
+        self._n = np.argmin(np.abs(self.coords[:,0]))
+        
+    def interpolate(self, airfoil, beta):
+        base_upper1 = self._get_upper()
+        base_lower1 = self._get_lower()
+        
+        base_upper2 = airfoil._get_upper()
+        base_lower2 = airfoil._get_lower()
+        
+        upper_coords = np.zeros(base_upper1.shape)
+        upper_coords[:,0] = base_upper1[:,0]
+        upper_coords[:,1] = np.interp(upper_coords[:,0], base_upper2[::-1,0], base_upper2[::-1,1])*(1-beta) +(base_upper1[:,1])*beta
+        
+        lower_coords = np.zeros(base_lower1.shape)
+        lower_coords[:,0] = base_lower1[:,0]
+        lower_coords[:,1] = (base_lower1[:,1]*beta + np.interp(lower_coords[:,0], base_lower2[:,0], base_lower2[:,1])*(1-beta))
+        
+        return Airfoil(np.vstack((upper_coords, lower_coords)))
+        
+    def _get_upper(self):
+        return self.coords[:self._n,:]
+        
+    def _get_lower(self):
+        return self.coords[self._n:, :]
+    
+    def plot(self, *args):
+        from matplotlib import pyplot as plt
+        
+        plt.plot(self.coords[:,0], self.coords[:,1], *args)
+        
 class Section(object):
 
     def __init__(self, pos: Point, chord: float, alpha: float, airfoil: str):
@@ -128,15 +161,36 @@ class Wing(object):
 
         return np.interp(np.abs(y), y_positions, chord_lengths)
 
-    def airfoil_at(self, y: float) -> str:
-        """Lookup airfoil at given span position"""
+    def next_airfoil(self, y: float) -> str:
+        """Lookup next airfoil at given span position"""
 
         y_positions = [section.pos.y for section in self.sections]
 
         airfoil_index = np.argmin(np.array(y_positions)-y)
 
         return self.sections[airfoil_index].airfoil
-
+            
+    def airfoils_at(self, y:float) -> tuple:
+        """ Lookup airfoils around given span position"""
+        
+        for ii, sec in enumerate(self.sections):
+            if sec.pos.y > y:
+                break
+        
+        if ii == 0:
+            return {0: self.sections[ii].airfoil}
+        
+        airfoil1 = self.sections[ii-1].airfoil
+        airfoil2 = self.sections[ii].airfoil
+        
+        if airfoil1 == airfoil2:
+            return {0: airfoil1}
+            
+        else:
+            beta = (y-self.sections[ii-1].pos.y)/(self.sections[ii].pos.y-self.sections[ii-1].pos.y)
+            return {0: airfoil1, 1: airfoil2, 'beta':beta}
+            
+            
     def _svg_(self):
         import svgwrite
 

@@ -60,20 +60,15 @@ class LiftAnalysis(object):
         self.calculation_chord_lengths = interpolate.interp1d(self.span_positions, self.chord_lenghtes)(np.abs(self.calculation_positions))
         calculation_alphas = interpolate.interp1d(self.span_positions, alphas)(np.abs(self.calculation_positions))
 
-        #print(chord_lenghtes, span_positions, calculation_chord_lengths)
-
         alphas = 1/180*np.pi + calculation_alphas
         
         #TODO: solution for fuselages lift
-        #alphas[np.abs(self.calculation_positions) < wing.root_pos] = 0
         dcl = np.array([2 * np.pi] * self.n)
-        #dcl[np.abs(self.calculation_positions) < wing.root_pos] = 1e-10
         
-        # TODO: use airfoils lift coefficient slope
+        #TODO: use airfoils lift coefficient slope
         result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, dcl,
                                 wing.span_width(), wing.aspect_ratio())
         
-        #print('Resulting C_L is {}'.format(result['C_A']))
         return result['c_a_li']/result['C_A']
         
     def _calculate_aileron_distribution(self, wing, angle = 1):
