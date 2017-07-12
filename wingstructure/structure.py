@@ -3,27 +3,37 @@ from shapely.ops import cascaded_union, linemerge
 from shapely.algorithms import cga
 import numpy as np
 
+def getExtrapoledLine(p1,p2, length):
+    'Creates a line extrapoled in p1->p2 direction'
+    line = LineString(p1,p2)
+    EXTRAPOL_RATIO = length/line.strength
+    a = p1
+    b = (p1[0]+EXTRAPOL_RATIO*(p2[0]-p1[0]), p1[1]+EXTRAPOL_RATIO*(p2[1]-p1[1]) )
+    return LineString([a,b])
 
 class WingSection(object):
 
-    def __init__(self, wing, airfoil_coords_db, skins, spar):
+    def __init__(self, wing, airfoil_coords_db, skins, spar, trailing_web):
         
         self.wing_definition = wing
         self.coords_db = airfoil_coords_db
         self.geometries = dict()
         self.skins = skins
         self.spar = spar
+        self.trailing_web = trailing_web
         self.span_pos = 0.0
         self.mass = 0.0
         self.area = 0.0
         self.cg = np.array((0.0, 0.0))
         
         self.inter = None
+        self.intera = []
         
     def update_geometry(self, span_pos):
          
         chord_length = self.wing_definition.chord_at(span_pos)
         coords = self.calculate_airfoil_coords(span_pos) * chord_length
+        flap_depth = self.wing_definition.get_flap_depth(span_pos)
         
         # TODO: turn profil according section alpha
         cg_list = []
@@ -41,7 +51,11 @@ class WingSection(object):
         #  ceate skins
         for ii, skin in enumerate(self.skins):            
             print('Iteration {}: type={}'.format(ii, type(self.interior)))
-                        
+            
+            if 'span-bounds' in skin.keys():
+                if span_pos < skin['span-bounds'][0] or span_pos >= skin['span-bounds'][1]:
+                    continue
+            
             if 'chord-bounds' in skin.keys():
                 chord_bounds = chord_length*np.array(skin['chord-bounds'])
                 
@@ -55,7 +69,13 @@ class WingSection(object):
                 else:
                     tmp_interior = LinearRing(tmp_interior)
                 
-                tmp_poly = Polygon(self.interior).difference(Polygon(tmp_interior))            
+                tmp_poly = Polygon(self.interior).difference(Polygon(tmp_interior))
+                
+
+                if flap_depth > 0.0:
+                    print('cut flap')
+                    tmp_poly = tmp_poly.difference(box(chord_length*(1-flap_depth), tmp_poly.bounds[1], tmp_poly.bounds[2], tmp_poly.bounds[3]))
+                     
                 self.geometries['skin_{}'.format(ii)] = tmp_poly                
                 self.interior = tmp_interior                
                 self.area += tmp_poly.area                
@@ -77,6 +97,21 @@ class WingSection(object):
         self.mass += tmp_mass
         cg_list.append({'mass': tmp_mass, 'point': np.array(web.centroid.coords[0])})
         
+        # create trailing web
+        if flap_depth > 0.0:
+            wing_end = chord_length*(1-flap_depth)
+            web_end = wing_end - self.trailing_web['offset']
+            web_start = web_end - self.trailing_web['thickness']
+            abox = box(web_start, self.interior.bounds[1], web_end, self.interior.bounds[3])
+            tmp_poly = abox.intersection(Polygon(self.interior))
+            tmp_mass = tmp_poly.area * self.trailing_web['rho']    
+            self.geometries['web_trailing'] = tmp_poly
+            self.intera.append(tmp_poly)
+            print('ajsdföjsad:{}'.format(tmp_poly.type))
+            self.area += tmp_poly.area
+            self.mass += tmp_mass
+            abox = box(web_start, *self.interior.bounds[1:])
+            self.interior = self.interior.difference(abox)
         # Calculate Center of Gravity
         cg_sum = np.zeros(2)
         for cg_point in cg_list:
@@ -117,7 +152,12 @@ class WingSection(object):
         self.inter=intersection
         for part, geom in zip(('upper','lower'),intersection.geoms):
             print('create '+name+'_{}'.format(part))
-            tmp_poly = self._create_offset_box(geom, thickness, side)                                        
+            if bevel > 0.0: 
+                tmp_poly = self._create_offset_box(geom, thickness, side, bevel=bevel)
+            elif bevel < 0.0:
+                raise Exception('Negativ bevel angle not alowed')
+            else:
+                tmp_poly = self._create_offset_box(geom, thickness, side)                                        
             self.geometries[name+'_{}'.format(part)] = tmp_poly
             tmp_interior = Polygon(tmp_interior).difference(tmp_poly).exterior                                        
             self.area += tmp_poly.area                    
@@ -127,9 +167,13 @@ class WingSection(object):
             
         self.interior = tmp_interior
         
-    def _create_offset_box(self, line, thickness, side):
+    def _create_offset_box(self, line, thickness, side, bevel=0.0):
         
         offsetline = line.parallel_offset(thickness, side=side)
+        
+        if bevel > 0.0:
+            
+            raise Exception('Beveling not yet implemented')
         
         if side == 'left':
             connect1 = LineString((line.coords[-1],offsetline.coords[-1]))
@@ -160,8 +204,10 @@ class WingSection(object):
             if key.startswith('skin_'):
                 coords_ext = np.array(geometry.exterior.coords)
                 plt.plot(coords_ext[:,0], coords_ext[:,1], 'black')
-                coords_int = np.array(geometry.interiors[0].coords)
-                plt.plot(coords_int[:,0], coords_int[:,1], 'black')
+                
+                if len(geometry.interiors) > 0:
+                    coords_int = np.array(geometry.interiors[0].coords)
+                    plt.plot(coords_int[:,0], coords_int[:,1], 'black')
                 
             elif key.startswith('part_skin_') or key.startswith('flange') or key.startswith('web'):
                 coords_ext = np.array(geometry.exterior.coords)

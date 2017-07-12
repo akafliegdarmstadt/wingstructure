@@ -251,6 +251,12 @@ class WingExt(Wing):
         flap = Flap(span_pos_start, depth_start, span_pos_end, depth_end)
         
         self.flaps[name] = flap
+    
+    def get_flap_depth(self, span_pos):
+        for flap in self.flaps.values():
+            if flap.span_pos_start <= span_pos <= flap.span_pos_end:
+                return flap.depth_at(span_pos)
+        return 0.0
         
     def set_airbrake(self, span_pos_start, span_pos_end):
         if span_pos_end > span_pos_start:
