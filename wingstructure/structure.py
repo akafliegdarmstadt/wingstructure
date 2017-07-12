@@ -38,7 +38,7 @@ class WingSection(object):
         outline = LinearRing(coords)
         self.interior = LinearRing(outline)
         
-        #  Iterate over skins
+        #  ceate skins
         for ii, skin in enumerate(self.skins):            
             print('Iteration {}: type={}'.format(ii, type(self.interior)))
                         
@@ -65,8 +65,17 @@ class WingSection(object):
                 cg_list.append({'mass': tmp_mass, 'point': np.array(tmp_poly.centroid.coords[0])})
                     
         # create spar
-        bounds = chord_length*np.array((self.spar['position']-self.spar['width']/2, self.spar['position']+self.spar['width']))
-        self._create_reinforcements(bounds, self.spar['thickness'], self.spar['rho'], cg_list, name='flange')
+        bounds = chord_length*np.array((self.spar['position']-self.spar['flange_width']/2, self.spar['position']+self.spar['flange_width']))
+        self._create_reinforcements(bounds, self.spar['flange_thickness'], self.spar['flange_rho'], cg_list, name='flange')
+        # web
+        bounds = chord_length*(self.spar['web_position'] + np.array((-1,1))*(self.spar['web_thickness']))
+        abox = box(bounds[0], self.interior.bounds[1], bounds[1], self.interior.bounds[3])
+        web = Polygon(self.interior).intersection(abox)
+        tmp_mass = web.area * self.spar['web_rho']
+        self.geometries['web'] = web
+        self.area += web.area
+        self.mass += tmp_mass
+        cg_list.append({'mass': tmp_mass, 'point': np.array(web.centroid.coords[0])})
         
         # Calculate Center of Gravity
         cg_sum = np.zeros(2)
@@ -94,7 +103,7 @@ class WingSection(object):
             
             return af3.coords
     
-    def _create_reinforcements(self, bounds, thickness, rho, cg_list, name='noname'):
+    def _create_reinforcements(self, bounds, thickness, rho, cg_list, bevel=0.0, name='noname'):
         print(' create reinforcement {}'.format(name))
         print('  bounds: {}\n   thickness:{}'.format(bounds, thickness))
         # Create Box for intersecting with interior
@@ -154,7 +163,7 @@ class WingSection(object):
                 coords_int = np.array(geometry.interiors[0].coords)
                 plt.plot(coords_int[:,0], coords_int[:,1], 'black')
                 
-            elif key.startswith('part_skin_') or key.startswith('flange'):
+            elif key.startswith('part_skin_') or key.startswith('flange') or key.startswith('web'):
                 coords_ext = np.array(geometry.exterior.coords)
                 plt.plot(coords_ext[:,0], coords_ext[:,1], 'black')
                 
