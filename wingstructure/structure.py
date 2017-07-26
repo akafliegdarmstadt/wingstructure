@@ -53,7 +53,7 @@ class WingSection(object):
         
         #  ceate skins
         for ii, skin in enumerate(self.skins):            
-            print('Iteration {}: type={}'.format(ii, type(self.interior)))
+            #print('Iteration {}: type={}'.format(ii, type(self.interior)))
             
             if 'span-bounds' in skin.keys():
                 if span_pos < skin['span-bounds'][0] or span_pos >= skin['span-bounds'][1]:
@@ -64,7 +64,8 @@ class WingSection(object):
                 
                 self._create_reinforcements(chord_bounds, skin['thickness'], skin['rho'], cg_list, name = 'part_skin_{}'.format(ii))
             else:
-                print('create skin_{}'.format(ii))
+                #print('create skin_{}'.format(ii))
+                self.inter2 = self.interior
                 tmp_interior = self.interior.parallel_offset(skin['thickness'], side=self._get_inside_direction(self.interior))
                 
                 if tmp_interior.type == 'MultiLineString':
@@ -73,11 +74,9 @@ class WingSection(object):
                     tmp_interior = LinearRing(tmp_interior)
                 
                 tmp_poly = Polygon(self.interior).difference(Polygon(tmp_interior))
-                
 
                 if flap_depth > 0.0:
-                    print('cut flap')
-                    tmp_poly = tmp_poly.difference(box(chord_length*(1-flap_depth), tmp_poly.bounds[1], tmp_poly.bounds[2], tmp_poly.bounds[3]))
+                    tmp_poly = tmp_poly.difference(box(le_pos[0]+chord_length*(1-flap_depth), tmp_poly.bounds[1], tmp_poly.bounds[2], tmp_poly.bounds[3]))
                      
                 self.geometries['skin_{}'.format(ii)] = tmp_poly                
                 self.interior = tmp_interior                
@@ -88,21 +87,22 @@ class WingSection(object):
                 cg_list.append({'mass': tmp_mass, 'point': np.array(tmp_poly.centroid.coords[0])})
                     
         # create spar
-        bounds = chord_length*np.array((self.spar['position']-self.spar['flange_width']/2, self.spar['position']+self.spar['flange_width']))
+        bounds = le_pos[0] + chord_length*np.array((self.spar['position']-self.spar['flange_width']/2, self.spar['position']+self.spar['flange_width']))
         self._create_reinforcements(bounds, self.spar['flange_thickness'], self.spar['flange_rho'], cg_list, name='flange')
         # web
-        bounds = chord_length*(self.spar['web_position'] + np.array((-1,1))*(self.spar['web_thickness']))
+        bounds = le_pos[0]+chord_length*np.array((self.spar['web_position'] + np.array((-1,1))*(self.spar['web_thickness'])))
         abox = box(bounds[0], self.interior.bounds[1], bounds[1], self.interior.bounds[3])
         web = Polygon(self.interior).intersection(abox)
         tmp_mass = web.area * self.spar['web_rho']
         self.geometries['web'] = web
         self.area += web.area
         self.mass += tmp_mass
+
         cg_list.append({'mass': tmp_mass, 'point': np.array(web.centroid.coords[0])})
         
         # create trailing web
         if flap_depth > 0.0:
-            wing_end = chord_length*(1-flap_depth)
+            wing_end = le_pos[0]+chord_length*(1-flap_depth)
             web_end = wing_end - self.trailing_web['offset']
             web_start = web_end - self.trailing_web['thickness']
             abox = box(web_start, self.interior.bounds[1], web_end, self.interior.bounds[3])
@@ -110,7 +110,7 @@ class WingSection(object):
             tmp_mass = tmp_poly.area * self.trailing_web['rho']    
             self.geometries['web_trailing'] = tmp_poly
             self.intera.append(tmp_poly)
-            print('ajsdföjsad:{}'.format(tmp_poly.type))
+            #print('ajsdföjsad:{}'.format(tmp_poly.type))
             self.area += tmp_poly.area
             self.mass += tmp_mass
             abox = box(web_start, *self.interior.bounds[1:])
@@ -142,8 +142,8 @@ class WingSection(object):
             return af3.coords
     
     def _create_reinforcements(self, bounds, thickness, rho, cg_list, bevel=0.0, name='noname'):
-        print(' create reinforcement {}'.format(name))
-        print('  bounds: {}\n   thickness:{}'.format(bounds, thickness))
+        #print(' create reinforcement {}'.format(name))
+        #print('  bounds: {}\n   thickness:{}'.format(bounds, thickness))
         # Create Box for intersecting with interior
         abox = box(bounds[0], self.interior.bounds[1]*1.1, bounds[1], self.interior.bounds[3]*1.1)
         intersection = abox.intersection(self.interior) 
@@ -154,7 +154,7 @@ class WingSection(object):
         
         self.inter=intersection
         for part, geom in zip(('upper','lower'),intersection.geoms):
-            print('create '+name+'_{}'.format(part))
+            #print('create '+name+'_{}'.format(part))
             if bevel > 0.0: 
                 tmp_poly = self._create_offset_box(geom, thickness, side, bevel=bevel)
             elif bevel < 0.0:
