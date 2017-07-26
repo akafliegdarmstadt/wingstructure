@@ -1,6 +1,7 @@
 from shapely.geometry import LinearRing, Polygon, box, LineString
 from shapely.ops import cascaded_union, linemerge
 from shapely.algorithms import cga
+from shapely.affinity import translate
 import numpy as np
 
 def getExtrapoledLine(p1,p2, length):
@@ -35,6 +36,8 @@ class WingSection(object):
         coords = self.calculate_airfoil_coords(span_pos) * chord_length
         flap_depth = self.wing_definition.get_flap_depth(span_pos)
         
+        le_pos = self.wing_definition.le_at(span_pos)
+        
         # TODO: turn profil according section alpha
         cg_list = []
         
@@ -46,7 +49,7 @@ class WingSection(object):
         
         # Recalculate
         outline = LinearRing(coords)
-        self.interior = LinearRing(outline)
+        self.interior = translate(LinearRing(outline), xoff=le_pos[0])
         
         #  ceate skins
         for ii, skin in enumerate(self.skins):            

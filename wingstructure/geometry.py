@@ -161,6 +161,19 @@ class Wing(object):
 
         return np.interp(np.abs(y), y_positions, chord_lengths)
 
+    def le_at(self, y: float) -> np.array:
+        """Calculates Leading edge position (x,z) at given span position"""
+        
+        y_positions = [section.pos.y for section in self.sections]
+        x_positions = [section.pos.x for section in self.sections]
+        z_positions = [section.pos.z for section in self.sections]
+        
+        x = np.interp(np.abs(y), y_positions, x_positions)
+        z = np.interp(np.abs(y), y_positions, z_positions)
+        
+        return np.array((x,z))
+        
+        
     def next_airfoil(self, y: float) -> str:
         """Lookup next airfoil at given span position"""
 
