@@ -234,24 +234,27 @@ class Wing(object):
         <p><b>mac</b>{2}</p>""".format(self.span_width(), self.area(), self.mac().chord, self._svg_())
 
 class Flap(object):
-    def __init__(self, span_pos_start, depth_start, span_pos_end, depth_end):
-        self.span_pos_start = span_pos_start
-        self.span_pos_end = span_pos_end
-        self.depth_start = depth_start
-        self.depth_end = depth_end
+    def __init__(self, span_start, span_end, depth):
+        """ Create a Flap object
+
+        Arguments
+        span_start -- span at which flap begins
+        span_end -- span at which flap ends
+        depth -- relative depth at span_start and _end as list
+        """
+        self.y_start = span_start
+        self.y_end = span_end
+        self.depth_start = depth[0]
+        self.depth_end = depth[1]
         
     def depth_at(self, span_pos):
-    
-        if not (self.span_pos_start <= abs(span_pos) <= self.span_pos_end):
-            return 0.0
-        else:
-            return self.depth_start+ (self.depth_end-self.depth_start)*(abs(span_pos)-self.span_pos_start)/(self.span_pos_end-self.span_pos_start)            
-        
+        return np.interp(span_pos, [self.y_start, self.y_end], [self.depth_start, self.depth_end])
+
     def __lt__(self, other) -> bool:
-        return self.span_pos_start < other.span_pos_start
+        return self.y_start < other.y_start
 
     def __eq__(self, other):
-        return self.span_pos_start == other.span_pos_start
+        return self.y_start == other.y_start
 
 class WingExt(Wing):
     def __init__(self, pos):
@@ -259,16 +262,16 @@ class WingExt(Wing):
         self.flaps = dict()
         self.airbrake = None
         
-    def set_flap(self, name, span_pos_start, depth_start, span_pos_end, depth_end):
+    def set_flap(self, name, span_pos_start, span_pos_end, depth):
         
-        flap = Flap(span_pos_start, depth_start, span_pos_end, depth_end)
+        flap = Flap(span_pos_start, span_pos_end, depth)
         
         self.flaps[name] = flap
     
-    def get_flap_depth(self, span_pos):
+    def get_flap_depth(self, span_pos: float)->float:
         for flap in self.flaps.values():
-            if flap.span_pos_start <= span_pos <= flap.span_pos_end:
-                return flap.depth_at(span_pos)
+            if flap.y_start <= span_pos <= flap.y_end:
+                return flap.depth_at(span_pos)/self.chord_at(span_pos)
         return 0.0
         
     def set_airbrake(self, span_pos_start, span_pos_end):
@@ -305,19 +308,25 @@ class WingExt(Wing):
             y_positions.append(y)
             chord_lengths.append(chord)
         
+        y_positions = np.array(y_positions)
+        
         # draw leading edge
         plt.plot(y_positions, -np.array(x_positions), 'b' )
         # draw trailing edge
         plt.plot(y_positions, -np.array(x_positions)-np.array(chord_lengths), 'b')
         
         # draw flaps
-        for name, obj in self.flaps.items():
-            chords = np.interp(np.array((obj.span_pos_start, obj.span_pos_end)), y_positions, chord_lengths)
-            offsets = np.interp(np.array((obj.span_pos_start, obj.span_pos_end)), y_positions, x_positions)
+        for name, aflap in self.flaps.items():
+            y_pos = np.array([aflap.y_start, aflap.y_end])
+            y_pos = np.concatenate([y_pos, y_positions[(y_positions>aflap.y_start)&(y_positions<aflap.y_end)]])
+            y_pos.sort()
             
-            x = (obj.span_pos_start, obj.span_pos_start, obj.span_pos_end, obj.span_pos_end)
-            y = (chords[0]+offsets[0], offsets[0]+(1-obj.depth_start)*chords[0], (1-obj.depth_end)*chords[1]+offsets[1], chords[1]+offsets[1])
-            plt.plot(x, -np.array(y), 'g--')
+            chords = np.interp(y_pos, y_positions, chord_lengths)
+            offsets = np.interp(y_pos, y_positions, x_positions)
+            te = -(chords+offsets)
+            depth = aflap.depth_at(y_pos)*chords
+            
+            plt.plot(y_pos[[0,*range(len(y_pos)),-1]], [te[0],*(te+depth),te[-1]], 'g--')
         # format 
         plt.axis('equal')
         plt.axis('off')
@@ -391,3 +400,6 @@ class Plane:
 
         # side view
         plt.subplot(2,2,3)
+        
+def createDummy():
+    return None
