@@ -86,7 +86,7 @@ class LiftAnalysis(object):
                     
                     lambda_k = flap.depth_at(span_pos)
                     
-                    eta_k = np.deg2rad(angle)
+                    eta_k = angle
                     
                     k = -2 / np.pi * ( np.sqrt( lambda_k * (1-lambda_k) )  + np.arcsin ( np.sqrt(lambda_k) ) )
             
