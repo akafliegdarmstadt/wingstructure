@@ -142,7 +142,7 @@ class LiftAndMomentAnalysis(LiftAnalysis):
             
             for ii, span_pos in enumerate(self.calculation_positions):
             
-                if flap.span_pos_start <= span_pos <= flap.span_pos_end:
+                if flap.y_start <= span_pos <= flap.y_end:
                 
                     lambda_k = flap.depth_at(span_pos)
                     

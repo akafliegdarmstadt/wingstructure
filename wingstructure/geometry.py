@@ -248,7 +248,8 @@ class Flap(object):
         self.depth_end = depth[1]
         
     def depth_at(self, span_pos):
-        return np.interp(span_pos, [self.y_start, self.y_end], [self.depth_start, self.depth_end])
+        return np.interp(span_pos, [self.y_start, self.y_end], [self.depth_start, self.depth_end],
+                         right=0.0, left=0.0)
 
     def __lt__(self, other) -> bool:
         return self.y_start < other.y_start
