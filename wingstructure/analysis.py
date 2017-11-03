@@ -16,7 +16,7 @@ class LiftAnalysis(object):
             for airfoil in airfoils:
                 self.airfoil_db[airfoil] = Airfoil()
 
-        self.basic_distribution = self._calculate_basic_distribution(wing, airfoil_db)
+        self._calculate_basic_distribution(wing, airfoil_db)
 
         self.flaps_distribution, self.flaps_lift = self._calculate_aileron_distribution(wing)
 
@@ -37,7 +37,7 @@ class LiftAnalysis(object):
                 flap_distribution = self.flaps_distribution[flap_name]
                 distributions += flap_distribution*factor[0]+flap_distribution[::-1]*factor[1] 
                 
-        return self.basic_distribution*lift + distributions
+        return self.base_alpha * lift, self.base_distribution * lift + distributions
 
     def _calculate_basic_distribution(self, wing, airfoil_db):
 
@@ -51,7 +51,7 @@ class LiftAnalysis(object):
             alpha0 = airfoil_db[section.airfoil].alpha0
             alphas.append(section.alpha - alpha0)
         
-        #TODO: refine calculation grid
+        # TODO: refine calculation grid
         
         self.n = int(round(wing.aspect_ratio()) * 4 - 1)
         vs = np.arange(1, self.n + 1)
@@ -60,18 +60,19 @@ class LiftAnalysis(object):
         self.calculation_chord_lengths = interpolate.interp1d(self.span_positions, self.chord_lenghtes)(np.abs(self.calculation_positions))
         calculation_alphas = interpolate.interp1d(self.span_positions, alphas)(np.abs(self.calculation_positions))
 
-        alphas = 1/180*np.pi + calculation_alphas
+        alphas = np.radians(1) + calculation_alphas
         
-        #TODO: solution for fuselages lift
+        # TODO: solution for fuselages lift
         dcl = np.array([2 * np.pi] * self.n)
         
-        #TODO: use airfoils lift coefficient slope
+        # TODO: use airfoils lift coefficient slope
         result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, dcl,
                                 wing.span_width(), wing.aspect_ratio())
+
+        self.base_alpha = np.radians(1)/result['C_A']
+        self.base_distribution = result['c_a_li'] / result['C_A']
         
-        return result['c_a_li']/result['C_A']
-        
-    def _calculate_aileron_distribution(self, wing, angle = 1):
+    def _calculate_aileron_distribution(self, wing, angle=1):
         
         distributions = {}
         lift = {}
@@ -154,7 +155,7 @@ class LiftAndMomentAnalysis(LiftAnalysis):
         
         #TODO: Moment airbrake - Zottel 4.45
         
-        lift_distribution = super().calculate(lift, airbrake, flap_deflections)
+        alpha, lift_distribution = super().calculate(lift, airbrake, flap_deflections)
         
         moment_distribution = np.zeros(self.n)
         
@@ -174,5 +175,5 @@ class LiftAndMomentAnalysis(LiftAnalysis):
                 
                 moment_distribution += (temp_distribution * eta_keff[0] + temp_distribution[::-1] * eta_keff[1])/2
                 
-        return lift_distribution, moment_distribution
+        return alpha, lift_distribution, moment_distribution
 
