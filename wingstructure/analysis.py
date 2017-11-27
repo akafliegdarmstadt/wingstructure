@@ -6,7 +6,7 @@ from scipy import interpolate
 
 
 class LiftAnalysis(object):
-
+    
     def __init__(self, wing: Wing, airfoil_db: dict = None):
         
         if (airfoil_db == None):
@@ -23,7 +23,7 @@ class LiftAnalysis(object):
         self.airbrake_distribution, self.airbrake_lift = self._calculate_airbrake_distribution(wing)
 
     def calculate(self, lift, airbrake = False, flap_deflections = {}):
-        
+        """calculate the lift distribution for specific lift an defined flap settings"""
         distributions = np.zeros(self.n)
         
         if airbrake:
@@ -40,7 +40,7 @@ class LiftAnalysis(object):
         return self.basic_distribution*lift + distributions
 
     def _calculate_basic_distribution(self, wing, airfoil_db):
-
+        """calculate basic lift distribution angle 1°"""
         self.span_positions = list()
         self.chord_lenghtes = list()
         alphas = list()
@@ -69,10 +69,10 @@ class LiftAnalysis(object):
         result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, dcl,
                                 wing.span_width(), wing.aspect_ratio())
         
-        return result['c_a_li']/result['C_A']
+        return result['c_l']/result['C_L']
         
     def _calculate_aileron_distribution(self, wing, angle = 1):
-        
+        """calculate aileron lift distribution"""
         distributions = {}
         lift = {}
         
@@ -97,13 +97,13 @@ class LiftAnalysis(object):
             result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, np.array( [2*np.pi] *self.n),
                                             wing.span_width(), wing.aspect_ratio())
             
-            distributions[name] = result['c_a_li']
-            lift[name] = result['C_A']
+            distributions[name] = result['c_l']
+            lift[name] = result['C_L']
     
         return distributions, lift
         
     def _calculate_airbrake_distribution(self, wing):
-        
+        """calculate airbrake distribution"""
         alphas = np.zeros(self.n)
         
         for ii, span_pos in enumerate(self.calculation_positions):
@@ -118,9 +118,8 @@ class LiftAnalysis(object):
         result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, np.array( [2*np.pi] *self.n),
                                 wing.span_width(), wing.aspect_ratio())
         
-        return result['c_a_li'], result['C_A']
-        
-    
+        return result['c_l'], result['C_L']
+
     def _calculate_eta_keff(self, eta_k):
     
         return 22.743 * np.arctan( 0.04715 * eta_k )
@@ -151,7 +150,7 @@ class LiftAndMomentAnalysis(LiftAnalysis):
             self.moment_aileron_distributions[name] = moment_temp
            
     def calculate(self, lift: float, airbrake = False, flap_deflections = {}):
-        
+        """"""
         #TODO: Moment airbrake - Zottel 4.45
         
         lift_distribution = super().calculate(lift, airbrake, flap_deflections)
@@ -161,8 +160,6 @@ class LiftAndMomentAnalysis(LiftAnalysis):
         moment_distribution += self.moment_basic_distribution
         
         for flap_name in flap_deflections:
-            
-            print(flap_name)
             
             if flap_name in self.moment_aileron_distributions:
                 

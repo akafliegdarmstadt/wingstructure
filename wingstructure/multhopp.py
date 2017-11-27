@@ -3,25 +3,28 @@ import numpy as np
 import scipy.optimize as optimize
 
 
-def multhopp(alpha, c_li, y_li, N_M=None, dcl=2*np.pi):
+def multhopp(alpha:float, c_li: np.array, y_li: np.array, N_M:int=None, dcl:float=2*np.pi)->dict:
+    """Calculates lift distribution with multhopp method.
+    
+    :param alpha: angle of attack, either whole wing or section wise
+    :param c: list or numpy.array of chord lengthes
+    :param y: list of corresponding span positions
+    :param N_M: number of calculation grid points in spanwise direction
+    :param dcl: lift slope of airfoil or list of lift slopes
+    :rtype: dict
+    """
+    
+    # prepare calculation 
     alpha, N_M, v_ar, theta_ar, y_ar, chord_ar, dcl, b, AR = prepare_multhopp(alpha, c_li, y_li, N_M, dcl)
-    return solve_multhopp(alpha, y_ar, chord_ar, dcl, b, AR)
+    
+    # build up euquation system and solve it
+    result = solve_multhopp(alpha, y_ar, chord_ar, dcl, b, AR)
+    
+    return result
 
 
 def prepare_multhopp(alpha, c_li, y_li, N_M, dcl):
-    """Berechnet Auftriebsverteilung nach dem Multhopp-Verfahren.
-    
-    :param alpha: Anstellwinkel der Fläche
-    :type alpha: float
-    :param c_li: Liste von Flügeltiefen
-    :type c_li: list
-    :param y_li: Liste von Stützstellen zu Flügeltiefen
-    :type y_li: list
-    :param N_M: Anzahl von Stützstellen bei Berechnung
-    :type: int
-    :param dcl: Auftriebsanstieg Profil
-    :type dcl: float
-    :rtype: dict
+    """Prepares problem for multhopp calculation
     """
 
     # Spannweite bestimmen
@@ -69,7 +72,8 @@ def prepare_multhopp(alpha, c_li, y_li, N_M, dcl):
 
 
 def solve_multhopp(alpha, y_ar, chord_ar, dcl, b, AR):
-
+    """builds up equation system and solves it"""
+    
     N_M = len(y_ar)
 
     v_ar = np.arange(1, N_M + 1)
@@ -123,8 +127,8 @@ def solve_multhopp(alpha, y_ar, chord_ar, dcl, b, AR):
 
     a_eff = alpha-a_ind
 
-    return {'gamma_li': gamma_ar, 'y_v_li': y_ar, 'c_a_li': c_a_li, 'C_A':C_A,'a_ind': a_ind,
-            'a_eff': a_eff,'C_Wi': C_Wi,'k': k,'AR': AR,'chord_li': chord_ar}
+    return {'gamma': gamma_ar, 'y': y_ar, 'c_l': c_a_li, 'C_L':C_A,'a_ind': a_ind,
+            'a_eff': a_eff,'C_Di': C_Wi,'k': k,'AR': AR,'chords': chord_ar}
 
 
 def inverse_multhopp(alpha_geo, C_L, c_li, y_li, N_M=None, dcl=2*np.pi):
