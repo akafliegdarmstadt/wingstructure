@@ -3,7 +3,7 @@ import numpy as np
 import scipy.optimize as optimize
 
 
-def multhopp(alpha:float, c_li: np.array, y_li: np.larray, N_M:int=None, dcl:float=2*np.pi)->dict:
+def multhopp(alpha:float, c_li: np.array, y_li: np.array, N_M:int=None, dcl:float=2*np.pi)->dict:
     """Calculates lift distribution with multhopp method.
     
     :param alpha: angle of attack, either whole wing or section wise
