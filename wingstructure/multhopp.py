@@ -6,7 +6,7 @@ import scipy.optimize as optimize
 def multhopp(alpha:float, c_li: np.array, y_li: np.array, N_M:int=None, dcl:float=2*np.pi)->dict:
     """Calculates lift distribution with multhopp method.
     
-    :param alpha: angle of attack, either whole wing or section wise
+    :param alpha: angle of attack in radians, either whole wing or section wise
     :param c: list or numpy.array of chord lengthes
     :param y: list of corresponding span positions
     :param N_M: number of calculation grid points in spanwise direction
