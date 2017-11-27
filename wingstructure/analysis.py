@@ -3,23 +3,25 @@ from .geometry import Wing
 from . import solve_multhopp
 import numpy as np
 from scipy import interpolate
-
+from collections import defaultdict
+from warnings import warn
 
 class LiftAnalysis(object):
-    
+    """Class doing the Lift calculations"""
     def __init__(self, wing: Wing, airfoil_db: dict = None):
-        
-        if (airfoil_db == None):
-            airfoils = set([sec.airfoil for sec in wing.sections])
-            airfoil_db = self.airfoil_db = dict()
-            
-            for airfoil in airfoils:
-                self.airfoil_db[airfoil] = Airfoil()
+        """Initialise Analysis object, calculate distributions"""
 
-        self.basic_distribution = self._calculate_basic_distribution(wing, airfoil_db)
+        # use default always default airfoil if no database is set
+        if airfoil_db is None:
+            warn('No airfoil database defined, using default airfoil.')
+            airfoil_db = defaultdict(Airfoil)
 
+        # calculate the distributions
+        # 1) lift distribution of wing without any flaps set
+        self._calculate_basic_distribution(wing, airfoil_db)
+        # 2) lift distribution of individual flaps
         self.flaps_distribution, self.flaps_lift = self._calculate_aileron_distribution(wing)
-
+        # 3) lift distribution of airbrakes
         self.airbrake_distribution, self.airbrake_lift = self._calculate_airbrake_distribution(wing)
 
     def calculate(self, lift, airbrake = False, flap_deflections = {}):
@@ -37,7 +39,7 @@ class LiftAnalysis(object):
                 flap_distribution = self.flaps_distribution[flap_name]
                 distributions += flap_distribution*factor[0]+flap_distribution[::-1]*factor[1] 
                 
-        return self.basic_distribution*lift + distributions
+        return self.base_alpha * lift, self.base_distribution * lift + distributions
 
     def _calculate_basic_distribution(self, wing, airfoil_db):
         """calculate basic lift distribution angle 1°"""
@@ -50,29 +52,36 @@ class LiftAnalysis(object):
             self.chord_lenghtes.append(section.chord)
             alpha0 = airfoil_db[section.airfoil].alpha0
             alphas.append(section.alpha - alpha0)
-        
-        #TODO: refine calculation grid
-        
+
+
+        # TODO: refine calculation grid
         self.n = int(round(wing.aspect_ratio()) * 4 - 1)
         vs = np.arange(1, self.n + 1)
-        thetas = vs * np.pi / (self.n + 1)
         self.calculation_positions = wing.span_width() / 2 * np.cos(np.arange(1, self.n + 1) * np.pi / (self.n + 1))
         self.calculation_chord_lengths = interpolate.interp1d(self.span_positions, self.chord_lenghtes)(np.abs(self.calculation_positions))
         calculation_alphas = interpolate.interp1d(self.span_positions, alphas)(np.abs(self.calculation_positions))
 
-        alphas = 1/180*np.pi + calculation_alphas
-        
-        #TODO: solution for fuselages lift
+        # angle of attack for whole wing: 1°
+        alphas = np.radians(1) + calculation_alphas
+
+        # no lift for fuselage
+        alphas[np.abs(self.calculation_positions) < wing.root_pos] = 0.0
+
+        # TODO: use airfoils lift coefficient slope
         dcl = np.array([2 * np.pi] * self.n)
-        
-        #TODO: use airfoils lift coefficient slope
+
+        # use Multhopp for calculation
         result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, dcl,
                                 wing.span_width(), wing.aspect_ratio())
+
+        self.base_alpha = np.radians(1)/result['C_A']
+        self.base_distribution = result['c_a_li'] / result['C_A']
         
         return result['c_l']/result['C_L']
         
     def _calculate_aileron_distribution(self, wing, angle = 1):
         """calculate aileron lift distribution"""
+
         distributions = {}
         lift = {}
         
@@ -120,9 +129,9 @@ class LiftAnalysis(object):
         
         return result['c_l'], result['C_L']
 
-    def _calculate_eta_keff(self, eta_k):
-    
-        return 22.743 * np.arctan( 0.04715 * eta_k )
+    @staticmethod
+    def _calculate_eta_keff(eta_k: float) -> float:
+        return 22.743 * np.arctan(0.04715 * eta_k)
         
     
 class LiftAndMomentAnalysis(LiftAnalysis):
@@ -134,7 +143,8 @@ class LiftAndMomentAnalysis(LiftAnalysis):
         self.moment_basic_distribution = np.interp(np.abs(self.calculation_positions), self.span_positions, cm_0)
 
         self.moment_aileron_distributions = {}
-        
+
+        # TODO: Fix Flap Moments
         for name, flap in wing.flaps.items():
             
             moment_temp = np.zeros(self.n)
@@ -145,15 +155,15 @@ class LiftAndMomentAnalysis(LiftAnalysis):
                 
                     lambda_k = flap.depth_at(span_pos)
                     
-                    moment_temp[ii] = -1.5 * np.sqrt( lambda_k * ( 1 - lambda_k )**3 )
+                    moment_temp[ii] = -1.5 * np.sqrt(lambda_k * (1 - lambda_k)**3)
            
             self.moment_aileron_distributions[name] = moment_temp
            
-    def calculate(self, lift: float, airbrake = False, flap_deflections = {}):
-        """"""
-        #TODO: Moment airbrake - Zottel 4.45
+    def calculate(self, lift: float, airbrake=False, flap_deflections={}):
         
-        lift_distribution = super().calculate(lift, airbrake, flap_deflections)
+        # TODO: Moment airbrake - Zottel 4.45
+        
+        alpha, lift_distribution = super().calculate(lift, airbrake, flap_deflections)
         
         moment_distribution = np.zeros(self.n)
         
@@ -163,13 +173,13 @@ class LiftAndMomentAnalysis(LiftAnalysis):
             
             if flap_name in self.moment_aileron_distributions:
                 
-                eta_k = np.array( flap_deflections[flap_name] )
+                eta_k = np.array(flap_deflections[flap_name])
                 
-                eta_keff = self._calculate_eta_keff( eta_k )
+                eta_keff = self._calculate_eta_keff(eta_k)
                 
                 temp_distribution = self.moment_aileron_distributions[flap_name]
                 
                 moment_distribution += (temp_distribution * eta_keff[0] + temp_distribution[::-1] * eta_keff[1])/2
                 
-        return lift_distribution, moment_distribution
+        return alpha, lift_distribution, moment_distribution
 
