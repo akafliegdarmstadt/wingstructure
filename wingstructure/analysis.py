@@ -74,8 +74,8 @@ class LiftAnalysis(object):
         result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, dcl,
                                 wing.span_width(), wing.aspect_ratio())
 
-        self.base_alpha = np.radians(1)/result['C_A']
-        self.base_distribution = result['c_a_li'] / result['C_A']
+        self.base_alpha = np.radians(1)/result['C_L']
+        self.base_distribution = result['c_l'] / result['C_L']
         
         return result['c_l']/result['C_L']
         
