@@ -1,18 +1,33 @@
 # -*- coding: utf-8 -*-
+"""
+Geometry Module
+
+Contains classes for storing plane geometry
+"""
 
 from collections import namedtuple
 from sortedcontainers import SortedList
 import numpy as np
 
+
 Point = namedtuple('Point','x y z')
 
+
 class Airfoil(object):
-    
-    def __init__(self, coords):
+    """
+    A storage class for Airfoil Coordinates
+    """
+    def __init__(self, coords: np.array):
         self.coords = coords
         self._n = np.argmin(np.abs(self.coords[:,0]))
         
     def interpolate(self, airfoil, beta):
+        """
+        Calculates interpolation with other airfoil
+        :param airfoil: another Airfoil object
+        :param beta: interpolation weighting factor
+        :return: interpolated Airfoil object
+        """
         base_upper1 = self._get_upper()
         base_lower1 = self._get_lower()
         
@@ -39,9 +54,12 @@ class Airfoil(object):
         from matplotlib import pyplot as plt
         
         plt.plot(self.coords[:,0], self.coords[:,1], *args)
-        
-class Section(object):
 
+
+class Section(object):
+    """
+    A storage class for wing sections
+    """
     def __init__(self, pos: Point, chord: float, alpha: float, airfoil: str):
         self.pos = pos
         self.alpha = alpha
@@ -55,8 +73,10 @@ class Section(object):
         return self.pos.x == other.pos.x
 
 
-class Wing(object):
-    """describes symmetric wing"""
+class BaseWing(object):
+    """
+    A basic storage Class
+    """
 
     def __init__(self, pos):
         self.sections = SortedList()
@@ -202,38 +222,12 @@ class Wing(object):
         else:
             beta = (y-self.sections[ii-1].pos.y)/(self.sections[ii].pos.y-self.sections[ii-1].pos.y)
             return {0: airfoil1, 1: airfoil2, 'beta':beta}
-            
-            
-    def _svg_(self):
-        import svgwrite
 
-        dwg = svgwrite.Drawing()
-
-        # draw contourline
-        x_positions = [section.pos.x for section in self.sections]
-        y_positions = [section.pos.y for section in self.sections]
-        chord_lengths = [section.chord for section in self.sections]
-
-        leading_edge = [(-x*100, -y*100) for x, y in zip(x_positions, y_positions)]
-        trailing_edge = [(-(x+c)*100, -y*100) for x, y, c in zip(x_positions, y_positions, chord_lengths)]
-
-        all_pts = leading_edge+trailing_edge[::-1]
-
-        dwg.add(dwg.polygon(all_pts,fill='none',stroke='black'))
-
-        return dwg.tostring()
-
-        # TODO: fix this function
-
-    def _repr_html_(self):
-        return """
-        <h3>Wing</h3>
-        {3}
-        <p><b>spanwidth:</b>{0}</p>
-        <p><b>wing area:</b>{1}</p>
-        <p><b>mac</b>{2}</p>""".format(self.span_width(), self.area(), self.mac().chord, self._svg_())
 
 class Flap(object):
+    """
+    A storage class for flaps.
+    """
     def __init__(self, span_start, span_end, depth):
         """ Create a Flap object
 
@@ -257,9 +251,13 @@ class Flap(object):
     def __eq__(self, other):
         return self.y_start == other.y_start
 
-class WingExt(Wing):
+
+class Wing(BaseWing):
+    """
+    A storage class for Wing with airbrake and flaps.
+    """
     def __init__(self, pos):
-        super(WingExt, self).__init__(pos)
+        super(Wing, self).__init__(pos)
         self.flaps = dict()
         self.airbrake = None
         
@@ -360,7 +358,7 @@ class Plane:
         name = data['Name']
 
         # Flügel einlesen
-        fluegel = Wing.generate(data[u'Flügel'])
+        fluegel = BaseWing.generate(data[u'Flügel'])
 
         # Höhenleitwerk einlesen
         Hoehenleitwerk = namedtuple('Hoehenleitwerk','pos c4tel ')

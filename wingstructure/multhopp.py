@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+"""
+Multhopp Lifting Line Method
+
+Reference: Konstruktionsseminar Strukturentwurf
+"""
 import numpy as np
 import scipy.optimize as optimize
 
@@ -134,6 +139,16 @@ def solve_multhopp(alpha, y_ar, chord_ar, dcl, b, AR):
 
 
 def inverse_multhopp(alpha_geo, C_L, c_li, y_li, N_M=None, dcl=2*np.pi):
+    """
+    Calculates aoa for given lift coefficient
+    :param alpha_geo: alphas given by wing geometry
+    :param C_L: demanded lift coefficient
+    :param c_li: chord list
+    :param y_li: span position list
+    :param N_M: calculation positions
+    :param dcl: lift slope of airfoil[s]
+    :return: resultdictionary
+    """
 
     def fun(alpha):
         alpha = alpha_geo+alpha
