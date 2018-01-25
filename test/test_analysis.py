@@ -15,7 +15,7 @@ twists = np.zeros(len(x))
 airfoils = ['dummy']*len(twists)
 
 # Flügel Objekt erzeugen
-wing = geometry.WingExt.create_from_planform(y, c, x, twists, airfoils)
+wing = geometry.Wing.create_from_planform(y, c, x, twists, airfoils)
 
 # Flügelklappen hinzufügen
 wing.set_flap('QR_innen', 0.749, 5.646, [0.15, 0.15])

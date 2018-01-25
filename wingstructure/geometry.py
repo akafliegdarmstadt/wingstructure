@@ -75,7 +75,7 @@ class Section(object):
 
 class BaseWing(object):
     """
-    A basic storage Class
+    A basic storage ClassF
     """
 
     def __init__(self, pos):
