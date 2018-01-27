@@ -12,7 +12,7 @@ pip install https://github.com/helo9/wingstructure/archive/master.zip
 ### Python
 Import relevant classes:
 ```python
-from wingstructure import WingExt, LiftAnalysis, LiftAndMomentAnalysis
+from wingstructure import Wing, LiftAnalysis, LiftAndMomentAnalysis
 ```
 
 Create simple geometry:
@@ -22,11 +22,9 @@ chord_lengths = [1, 0.9, 0.6, 0.3]
 offsets = [0, 0.1, 0.4, 0.7]
 twists = [0]*4
 airfoils = [None]*4
-wing = WingExt.create_from_planform(span_positions, chord_lengths, offsets, twists, airfoils)
+wing = Wing.create_from_planform(span_positions, chord_lengths, offsets, twists, airfoils)
 wing.set_root_pos(0.0)
 wing.set_airbrake(1.5,2.9)
-wing.set_flap('flap', 2, 5,[0.3,0.3])
-wing.set_flap('flap2', 5, 7, [0.3,0.2])
 ```
 
 ![geometry](examples/wing.png)
