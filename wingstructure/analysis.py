@@ -45,7 +45,7 @@ class LiftAnalysis(object):
             
         for flap_name in flap_deflections:
             if flap_name in self.flaps_lift:
-                factor = 22.743 * np.arctan( 0.04715 * np.array(flap_deflections[flap_name]) )
+                factor = self._calculate_eta_keff(np.array(flap_deflections[flap_name]))
                 lift -= self.flaps_lift[flap_name] * np.sum(factor)
                 flap_distribution = self.flaps_distribution[flap_name]
                 distributions += flap_distribution*factor[0]+flap_distribution[::-1]*factor[1] 
@@ -84,7 +84,7 @@ class LiftAnalysis(object):
         # TODO: use airfoils lift coefficient slope
         dcl = np.array([2 * np.pi] * self.n)
 
-        # use Multhopp for calculation
+        # use multhopp method for calculation
         result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, dcl,
                                 wing.span_width(), wing.aspect_ratio())
 
@@ -122,7 +122,7 @@ class LiftAnalysis(object):
             result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, np.array( [2*np.pi] *self.n),
                                             wing.span_width(), wing.aspect_ratio())
             
-            distributions[name] = result['c_l']
+            distributions[name] = result['c_l']/eta_keff
             lift[name] = result['C_L']
     
         return distributions, lift
@@ -147,7 +147,7 @@ class LiftAnalysis(object):
         return result['c_l'], result['C_L']
 
     @staticmethod
-    def _calculate_eta_keff(eta_k: float) -> float:
+    def _calculate_eta_keff(eta_k: float or np.ndarray) -> float:
         return 22.743 * np.arctan(0.04715 * eta_k)
         
     

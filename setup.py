@@ -26,7 +26,8 @@ setup(name='wingstructure',
     packages=['wingstructure'],
     install_requires= [
         'numpy',
-        'sortedcontainers'
+        'sortedcontainers',
+        'matplotlib'
     ],
     zip_safe=False
     )
