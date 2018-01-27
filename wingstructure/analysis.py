@@ -58,12 +58,12 @@ class LiftAnalysis(object):
         """
 
         self.span_positions = list()
-        self.chord_lenghtes = list()
+        self.chord_lengths = list()
         alphas = list()
 
         for section in wing.sections:
             self.span_positions.append(section.pos.y)
-            self.chord_lenghtes.append(section.chord)
+            self.chord_lengths.append(section.chord)
             alpha0 = airfoil_db[section.airfoil].alpha0
             alphas.append(section.alpha - alpha0)
 
@@ -72,7 +72,7 @@ class LiftAnalysis(object):
         self.n = int(round(wing.aspect_ratio()) * 4 - 1)
         vs = np.arange(1, self.n + 1)
         self.calculation_positions = wing.span_width() / 2 * np.cos(np.arange(1, self.n + 1) * np.pi / (self.n + 1))
-        self.calculation_chord_lengths = interpolate.interp1d(self.span_positions, self.chord_lenghtes)(np.abs(self.calculation_positions))
+        self.calculation_chord_lengths = interpolate.interp1d(self.span_positions, self.chord_lengths)(np.abs(self.calculation_positions))
         calculation_alphas = interpolate.interp1d(self.span_positions, alphas)(np.abs(self.calculation_positions))
 
         # angle of attack for whole wing: 1°
