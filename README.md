@@ -1,21 +1,21 @@
 # wingstructure
-python tool for wing structure calculations
+a python tool for wing structure calculations
 
 ![lift distribution](examples/Liftdistribution.png)
 
 ## Usage
-Use pip to install Package
+Use pip to install the package:
 ```sh
 pip install https://github.com/helo9/wingstructure/archive/master.zip
 ```
 
 ### Python
-Import relevant classes
+Import relevant classes:
 ```python
 from wingstructure import WingExt, LiftAnalysis, LiftAndMomentAnalysis
 ```
 
-Create simple geometry
+Create simple geometry:
 ```python
 span_positions = [0, 2, 5, 7]
 chord_lengths = [1, 0.9, 0.6, 0.3]
