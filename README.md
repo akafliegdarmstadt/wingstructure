@@ -34,7 +34,7 @@ Create Analysis
 liftana = LiftAnalysis(wing)
 ```
 
-Calculate Distribution for Lift Coefficient
+Calculate Distribution of lift Coefficient
 ```python
 α, distribution = liftana.calculate(lift=0.8)
 ```
