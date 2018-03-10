@@ -113,14 +113,14 @@ class BaseWing(object):
         span_positions = [section.pos.y for section in self.sections]
         chord_lengths = [section.chord for section in self.sections]
         
-        while self.root_pos > span_positions[0]:
-            last = (span_positions[0], chord_lengths[0])
+        #while self.root_pos > span_positions[0]:
+        #    last = (span_positions[0], chord_lengths[0])
             
-            del(span_positions[0])
-            del(chord_lengths[0])
+        #    del(span_positions[0])
+        #    del(chord_lengths[0])
         
-        if self.root_pos < span_positions[0]:
-            chord0 = self.root_pos-last[0]/(span_positions[0]-last[0])*(chord_lengths[0]-last[1])+last[1]
+        #if self.root_pos < span_positions[0]:
+        #    chord0 = self.root_pos-last[0]/(span_positions[0]-last[0])*(chord_lengths[0]-last[1])+last[1]
         
         area = np.trapz(chord_lengths, span_positions)
 
