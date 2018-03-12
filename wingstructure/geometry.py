@@ -12,6 +12,8 @@ import numpy as np
 
 Point = namedtuple('Point','x y z')
 
+origin = Point(0, 0, 0)
+
 
 class Airfoil(object):
     """
@@ -62,9 +64,21 @@ class Section(object):
     """
     def __init__(self, pos: Point, chord: float, alpha: float, airfoil: str):
         self.pos = pos
-        self.alpha = alpha
         self.chord = chord
+        self.alpha = alpha
         self.airfoil = airfoil
+
+    @property
+    def x(self):
+        return self.pos.x
+
+    @property
+    def y(self):
+        return self.pos.y
+
+    @property
+    def z(self):
+        return self.pos.z
 
     def __lt__(self, other) -> bool:
         return self.pos.x < other.pos.x
@@ -75,10 +89,10 @@ class Section(object):
 
 class BaseWing(object):
     """
-    A basic storage ClassF
+    A basic wing class
     """
 
-    def __init__(self, pos):
+    def __init__(self, pos=origin):
         self.sections = SortedList()
         self.pos = pos
         self.root_pos = 0.0
@@ -96,11 +110,17 @@ class BaseWing(object):
             pos = Point(offset, span_position, 0)
             section = Section(pos, chord_length, twist, airfoil)
 
-            wing1.add_section(section)
+            wing1._add_section(section)
 
         return wing1
 
-    def add_section(self, section: Section) -> None:
+    def add_section(self, pos: Point, chord: float, alpha:float=0., airfoil:str=''):
+
+        tmpsec = Section(pos, chord, alpha, airfoil)
+
+        self._add_section(tmpsec)
+
+    def _add_section(self, section: Section) -> None:
 
         self.sections.add(section)
 
@@ -130,44 +150,41 @@ class BaseWing(object):
         return self.span_width()**2/self.area()
 
     def mac(self) -> Section:
-        """Calculate the mean aerodynamic chord of wing."""
+        """Calculates the mean aerodynamic chord."""
 
-        def generate_segment_macs(x_positions, y_positions, chord_lengths):
-            """Generate the segments mean aerodynamic chord values."""
+        wingarea = 0.0
+        mac = 0.0
+        pos = np.zeros(3)
 
-            last = None
+        for ii in range(len(self.sections)):
 
-            for x, y, chord in zip(x_positions, y_positions, chord_lengths):
+            if ii == 0 or self.sections[ii].pos.y < self.root_pos:
+                continue
 
-                if last is not None and y > self.root_pos:
-                    x_old, y_old, chord_old = last
-                    span = y - y_old
-                    area = (chord_old+chord) * span / 2
-                    taper = chord / chord_old
-                    taper1 = taper + 1
-                    fraction = (taper + taper1) / (3 * taper1)
+            section = self.sections[ii]
+            lastsec = self.sections[ii-1]
 
-                    mac = chord_old * (taper**2 + taper + 1) / (1.5 * taper1)
-                    mac_x = x_old + fraction * (x - x_old)
-                    mac_y = y_old + fraction * span
+            # calculate segments characteristica
+            segspan = section.y - lastsec.y
+            segarea = (section.chord + lastsec.chord) * segspan / 2
+            taper = section.chord / lastsec.chord
+            taper1 = taper + 1
+            fraction = (taper + taper1) / (3 * taper1)
 
-                    yield (mac_x*area, mac_y*area, mac*area, area)
+            segmac = lastsec.chord * (taper ** 2 + taper + 1) / (1.5 * taper1)
+            segx = lastsec.x + fraction * (section.x - lastsec.x)
+            segy = lastsec.y + fraction * segspan
 
-                last = (x, y, chord)
+            # sum values up weighted by segments area
+            pos += np.array([segx, segy, 0])* segarea
+            mac += segmac * segarea
 
-        x_positions = [section.pos.x for section in self.sections]
-        y_positions = [section.pos.y for section in self.sections]
-        chord_lengths = [section.chord for section in self.sections]
+            wingarea += segarea
 
-        res = np.array(list(generate_segment_macs(x_positions, y_positions, chord_lengths)))
+        pos /= wingarea
+        mac /= wingarea
 
-        area = self.area()
-
-        mac_x = sum(res[:, 0])/area
-        mac_y = sum(res[:, 1])/area
-        mac = sum(res[:, 2])/area
-
-        return Section(Point(mac_x, mac_y, 0),  mac, 0, airfoil=None)
+        return Section(Point(*pos.tolist()),  mac, 0, airfoil=None)
 
     def span_width(self) -> float:
         """Calculate the span width of wing."""
@@ -256,7 +273,7 @@ class Wing(BaseWing):
     """
     A storage class for Wing with airbrake and flaps.
     """
-    def __init__(self, pos):
+    def __init__(self, pos:Point=origin):
         super(Wing, self).__init__(pos)
         self.flaps = dict()
         self.airbrake = None
