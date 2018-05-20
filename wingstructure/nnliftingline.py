@@ -1,3 +1,5 @@
+import numpy as np
+
 def nonlinearLL(a, c_li, y_li, airfoil_li, v_inf, polars, max_iter=200):
     """ Nichtlineares Iterationsverfahren zur Bestimmung der Auftriebsverteilung.
     Erlaubt die direkte Verwendung von Profilpolaren.

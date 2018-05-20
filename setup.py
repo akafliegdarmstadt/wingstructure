@@ -27,7 +27,8 @@ setup(name='wingstructure',
     install_requires= [
         'numpy',
         'sortedcontainers',
-        'matplotlib'
+        'matplotlib',
+        'pytest'
     ],
     zip_safe=False
     )

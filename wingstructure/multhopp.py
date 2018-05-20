@@ -8,7 +8,7 @@ import numpy as np
 import scipy.optimize as optimize
 
 
-def multhopp(alpha:float, c_li: np.array, y_li: np.array, N_M:int=None, dcl:float=2*np.pi)->dict:
+def multhopp(alpha:float, c_li: np.array, y: np.array, N_M:int=None, dcl:float= 2 * np.pi)->dict:
     """Calculates lift distribution with multhopp method.
     
     :param alpha: angle of attack in radians, either whole wing or section wise
@@ -20,7 +20,7 @@ def multhopp(alpha:float, c_li: np.array, y_li: np.array, N_M:int=None, dcl:floa
     """
     
     # prepare calculation 
-    alpha, N_M, v_ar, theta_ar, y_ar, chord_ar, dcl, b, AR = prepare_multhopp(alpha, c_li, y_li, N_M, dcl)
+    alpha, N_M, v_ar, theta_ar, y_ar, chord_ar, dcl, b, AR = prepare_multhopp(alpha, c_li, y, N_M, dcl)
     
     # build up euquation system and solve it
     result = solve_multhopp(alpha, y_ar, chord_ar, dcl, b, AR)

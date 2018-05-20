@@ -62,7 +62,7 @@ class Section(object):
     """
     A storage class for wing sections
     """
-    def __init__(self, pos: Point, chord: float, alpha: float, airfoil: str):
+    def __init__(self, pos: Point, chord: float, alpha: float = 0.0, airfoil: str = ''):
         self.pos = pos
         self.chord = chord
         self.alpha = alpha
@@ -96,6 +96,23 @@ class BaseWing(object):
         self.sections = SortedList()
         self.pos = pos
         self.root_pos = 0.0
+
+    @classmethod
+    def create_from_dict(cls, dict):
+
+        pos = Point(*dict['pos'])
+
+        wing = cls(pos)
+
+        for section in dict['sections']:
+            section['pos'] = Point(*section['pos'])
+
+
+            section = Section(**section)
+
+            wing._add_section(section)
+
+        return wing
 
     @classmethod
     def create_from_planform(cls, span_positions: list, chord_lengths: list, offsets: list, twists: list, airfoils: list):
