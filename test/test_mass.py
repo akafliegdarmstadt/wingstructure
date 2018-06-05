@@ -1,5 +1,3 @@
-import pytest
-
 from wingstructure.mass import Masspoint
 
 

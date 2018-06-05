@@ -9,7 +9,7 @@ from collections import namedtuple
 from sortedcontainers import SortedList
 import numpy as np
 
-
+# data type for 3D-Coordinates
 Point = namedtuple('Point','x y z')
 
 origin = Point(0, 0, 0)
@@ -26,9 +26,9 @@ class Airfoil(object):
     def interpolate(self, airfoil, beta):
         """
         Calculates interpolation with other airfoil
-        :param airfoil: another Airfoil object
+        :param airfoil: another airfoil object
         :param beta: interpolation weighting factor
-        :return: interpolated Airfoil object
+        :return: interpolated airfoil (object)
         """
         base_upper1 = self._get_upper()
         base_lower1 = self._get_lower()
@@ -81,10 +81,13 @@ class Section(object):
         return self.pos.z
 
     def __lt__(self, other) -> bool:
-        return self.pos.x < other.pos.x
+        return self.pos.y < other.pos.y
 
     def __eq__(self, other):
-        return self.pos.x == other.pos.x
+        return self.pos.y == other.pos.y
+
+    def __repr__(self):
+        return 'sec: {{leading edge: {}, chord: {}}}'.format(self.pos, self.chord)
 
 
 class BaseWing(object):
@@ -98,15 +101,14 @@ class BaseWing(object):
         self.root_pos = 0.0
 
     @classmethod
-    def create_from_dict(cls, dict):
+    def create_from_dict(cls, adict):
 
-        pos = Point(*dict['pos'])
+        pos = Point(*adict['pos'])
 
         wing = cls(pos)
 
-        for section in dict['sections']:
+        for section in adict['sections']:
             section['pos'] = Point(*section['pos'])
-
 
             section = Section(**section)
 
@@ -149,16 +151,7 @@ class BaseWing(object):
 
         span_positions = [section.pos.y for section in self.sections]
         chord_lengths = [section.chord for section in self.sections]
-        
-        #while self.root_pos > span_positions[0]:
-        #    last = (span_positions[0], chord_lengths[0])
-            
-        #    del(span_positions[0])
-        #    del(chord_lengths[0])
-        
-        #if self.root_pos < span_positions[0]:
-        #    chord0 = self.root_pos-last[0]/(span_positions[0]-last[0])*(chord_lengths[0]-last[1])+last[1]
-        
+
         area = np.trapz(chord_lengths, span_positions)
 
         return 2*area # for both sides of wing
@@ -364,75 +357,3 @@ class Wing(BaseWing):
         plt.axis('equal')
         plt.axis('off')
         plt.xlim(-1, max(y_positions)+1)
-        
-class Plane:
-    def __init__(self, name, wing, hlw):
-        self.name = name
-        self.wing = wing
-        self.hlw = hlw
-
-    @classmethod
-    def load_from_file(cls, filename):
-        import yaml, io
-
-        # Lade Daten
-        with io.open(filename, encoding='utf8') as f:
-            content = f.read()
-            data = yaml.load(content)
-
-        # Erstelle Flugzeug Objekt
-        plane = cls.generate(data)
-
-        return plane
-
-    @classmethod
-    def generate(cls, data):
-
-        # Name einlesen
-        name = data['Name']
-
-        # Flügel einlesen
-        fluegel = BaseWing.generate(data[u'Flügel'])
-
-        # Höhenleitwerk einlesen
-        Hoehenleitwerk = namedtuple('Hoehenleitwerk','pos c4tel ')
-
-        hlw_data = data[u'Höhenleitwerk']
-
-        hlw_pos = Point(x=hlw_data['pos']['x'], y=0, z=hlw_data['pos']['z'])
-        hlw = Hoehenleitwerk(pos=hlw_pos, c4tel=hlw_data['c4tel'])
-
-        # Flugzeug Objekt erstellen
-        plane = Plane(name, wing=fluegel, hlw=hlw)
-
-        return plane
-
-    def plot(self):
-        from matplotlib import pyplot as plt
-
-        fig = plt.figure(figsize=(10,6))
-
-        # 3D Plot
-        ax = fig.add_subplot(221, projection='3d')
-
-        xle = self.wing.xle
-        yle = self.wing.yle
-        zle = self.wing.zle
-        c = self.wing.c
-        kt = self.wing.kt
-
-        ax.plot(xle, yle, zle)
-
-        # top view
-        plt.subplot(2,2,2)
-
-        plt.plot(yle, xle, 'black')      # leading edge
-        plt.plot(yle, xle+c, 'black')    # trailing edge
-        plt.plot(yle, xle+(1-kt)*c, '*') # flap edge
-        plt.axis('equal')
-
-        # side view
-        plt.subplot(2,2,3)
-        
-def createDummy():
-    return None

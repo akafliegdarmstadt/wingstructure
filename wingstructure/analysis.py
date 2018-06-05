@@ -29,7 +29,7 @@ class LiftAnalysis(object):
         # 3) lift distribution of airbrakes
         self.airbrake_distribution, self.airbrake_lift = self._calculate_airbrake_distribution(wing)
 
-    def calculate(self, lift, airbrake=False, flap_deflections={}):
+    def calculate(self, lift: float, airbrake=False, flap_deflections={})->tuple:
         """
         Calculates the lift distribution for specific lift an defined flap settings
         :param lift: demanded lift coefficient
@@ -66,7 +66,6 @@ class LiftAnalysis(object):
             self.chord_lengths.append(section.chord)
             alpha0 = airfoil_db[section.airfoil].alpha0
             alphas.append(section.alpha - alpha0)
-
 
         # TODO: refine calculation grid
         self.n = int(round(wing.aspect_ratio()) * 4 - 1)
