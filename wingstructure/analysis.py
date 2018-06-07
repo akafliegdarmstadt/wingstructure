@@ -29,9 +29,9 @@ class LiftAnalysis(object):
         # 3) lift distribution of airbrakes
         self.airbrake_distribution, self.airbrake_lift = self._calculate_airbrake_distribution(wing)
 
-    def calculate(self, c_l: float, air_brake=False, flap_deflections={})->tuple:
+    def _calculate(self, c_l: float, air_brake=False, flap_deflections={})->tuple:
         """
-        Calculates the lift distribution for specific lift an defined flap settings
+        Calculates lift distribution and resultant coefficients for defined flap settings and lift
         :param c_l: demanded lift coefficient for whole wing
         :param air_brake: enables or disables airbrake [True/False]
         :param flap_deflections: dictionary containing flap deflections, e.g. {'flap1':[np.radians(5),np.radians(-5)]}
@@ -51,15 +51,28 @@ class LiftAnalysis(object):
             # when flap exists take flap's impact on lift into account
             if flap_name in self.flaps_lift:
                 factor = self._calculate_eta_keff(np.array(flap_deflections[flap_name]))
-                c_l -= self.flaps_lift[flap_name] * np.sum(factor)
+                c_l -= self.flaps_lift[flap_name] * factor
                 flap_distribution = self.flaps_distribution[flap_name]
-                distribution += flap_distribution*factor[0]+flap_distribution[::-1]*factor[1]
+                distribution += flap_distribution * factor[0] + flap_distribution[::-1] * factor[1]
             # otherwise warn user
             else:
                 from warnings import warn
                 warn('flap {} does not exist'.format(flap_name))
+
+        return c_l, self.base_distribution * np.sum(c_l) + distribution
+
+    def calculate(self, c_l: float, air_brake=False, flap_deflections={})->tuple:
+        """
+        Calculates the lift distribution for specific lift an defined flap settings
+        :param c_l: demanded lift coefficient for whole wing
+        :param air_brake: enables or disables airbrake [True/False]
+        :param flap_deflections: dictionary containing flap deflections, e.g. {'flap1':[np.radians(5),np.radians(-5)]}
+        :return: (angle of attack, lift distribution)
+        """
+
+        c_l, distribution = self._calculate(c_l, air_brake, flap_deflections)
                 
-        return self.base_alpha * c_l, self.base_distribution * c_l + distribution
+        return self.base_alpha * np.sum(c_l), distribution
 
     def calculate_resultant(self, c_l, air_brake=False, flap_deflections={})->tuple:
         """
@@ -70,23 +83,45 @@ class LiftAnalysis(object):
         :return: (lift coefficient left, lift coefficient right)
         """
 
-        # take air brake impact into account
-        if air_brake:
-            c_l -= self.airbrake_lift
+        c_l, c_l_dis = self._calculate(c_l, air_brake, flap_deflections)
 
-        # iterate over given flap deflections
-        for flap_name in flap_deflections:
-            # when flap exists take flap's impact on lift into account
-            if flap_name in self.flaps_lift:
-                factor = self._calculate_eta_keff(np.array(flap_deflections[flap_name]))
-                c_l -= self.flaps_lift[flap_name] * factor
+        # calculate lever for lift
 
-            # otherwise warn user
-            else:
-                from warnings import warn
-                warn('flap {} does not exist'.format(flap_name))
+        y_lever = np.zeros(2)
 
-        return c_l
+        # shorter names for used values
+        c_i = self.calculation_chord_lengths
+        y_i = self.calculation_positions
+
+        # span width of calculation wing segments
+        diff_y_i = -np.diff(y_i)
+
+        # area of calculated wing segments
+        area_i = (c_i[:-1] + c_i[1:]) / 2 * diff_y_i
+
+        # redistribute area, target-> area relevant for given lift coeffients
+        area_ip = np.pad(area_i, 1, 'edge')
+
+        area_im = (area_ip[1:] + area_ip[:-1]) / 2
+
+        # calculate leaver arms for local lift
+        y_l = np.copy(y_i)
+        y_l[0] = np.mean(y_l[:2])
+        y_l[-1] = np.mean(y_l[-2:])
+
+        mid = len(y_l)//2
+
+        y_l_left = y_l[mid:]
+        y_l_left[0] = np.mean(y_l_left[:2])
+        y_l_right = y_l[:mid+1]
+        y_l_right[-1] = np.mean(y_l_right[-2:])
+
+        y_lever[0] = sum(c_l_dis[mid:] * area_im[mid:] * y_l_left) /\
+                    sum(c_l_dis[mid:] * area_im[mid:])
+        y_lever[1] = sum(c_l_dis[:mid+1] * area_im[:mid+1] * y_l_right) /\
+                    sum(c_l_dis[:mid+1] * area_im[:mid+1])
+
+        return (*y_lever, *c_l)
 
     def _calculate_basic_distribution(self, wing, airfoil_db):
         """
@@ -215,17 +250,17 @@ class LiftAndMomentAnalysis(LiftAnalysis):
            
             self.moment_aileron_distributions[name] = moment_temp
            
-    def calculate(self, lift: float, airbrake=False, flap_deflections={}):
+    def calculate(self, lift: float, air_brake=False, flap_deflections={}):
         """
         calculates lift and moment distribution
         :param lift: demanded lift coefficient
-        :param airbrake: enable or disable [True/False]
+        :param air_brake: enable or disable [True/False]
         :param flap_deflections: flap_deflections: dictionary containing flap deflections, e.g. {'flap1':[np.radians(5),np.radians(-5)]}
         :return: (aoa, lift-distribution, moment-distribution)
         """
         # TODO: Moment airbrake - Zottel 4.45
         
-        alpha, lift_distribution = super().calculate(lift, airbrake, flap_deflections)
+        alpha, lift_distribution = super().calculate(lift, air_brake, flap_deflections)
         
         moment_distribution = np.zeros(self.n)
         
