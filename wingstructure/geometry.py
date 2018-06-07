@@ -219,8 +219,7 @@ class BaseWing(object):
         z = np.interp(np.abs(y), y_positions, z_positions)
         
         return np.array((x,z))
-        
-        
+
     def next_airfoil(self, y: float) -> str:
         """Lookup next airfoil at given span position"""
 
@@ -287,9 +286,36 @@ class Wing(BaseWing):
         super(Wing, self).__init__(pos)
         self.flaps = dict()
         self.airbrake = None
-        
+
+    @classmethod
+    def create_from_dict(cls, adict):
+
+        # create temporary BaseWing
+        wing_ = super().create_from_dict(adict)
+
+        # create Wing instance
+        wing = cls()
+
+        # copy data from BaseWing instance
+        wing.sections = wing_.sections
+        wing.pos = wing_.pos
+
+        # add flaps
+        if 'flaps' in adict.keys() and isinstance(adict['flaps'], dict):
+            for name, data in adict['flaps'].items():
+                wing.set_flap(name, data['span-start'], data['span-end'], data['depth'])
+
+        # add air brake
+        if 'airbrake' in adict.keys() and isinstance(adict['airbrake'], dict):
+            wing.set_airbrake(adict['airbrake']['span-start'], adict['airbrake']['span-end'])
+
+        return wing
+
     def set_flap(self, name, span_pos_start, span_pos_end, depth):
-        
+
+        if np.isscalar(depth):
+            depth = [depth]*2
+
         flap = Flap(span_pos_start, span_pos_end, depth)
         
         self.flaps[name] = flap
@@ -325,7 +351,7 @@ class Wing(BaseWing):
         chord_lengths = []
         
         for section in self.sections:
-            x = section.pos.x
+            x = section.pos.x+self.pos.x
             y = section.pos.y
             chord = section.chord
             
@@ -344,7 +370,9 @@ class Wing(BaseWing):
         # draw flaps
         for name, aflap in self.flaps.items():
             y_pos = np.array([aflap.y_start, aflap.y_end])
-            y_pos = np.concatenate([y_pos, y_positions[(y_positions>aflap.y_start)&(y_positions<aflap.y_end)]])
+            y_pos = np.concatenate([y_pos,
+                                    y_positions[(y_positions>aflap.y_start) &
+                                                (y_positions<aflap.y_end)]])
             y_pos.sort()
             
             chords = np.interp(y_pos, y_positions, chord_lengths)
@@ -353,6 +381,17 @@ class Wing(BaseWing):
             depth = aflap.depth_at(y_pos)*chords
             
             plt.plot(y_pos[[0,*range(len(y_pos)),-1]], [te[0],*(te+depth),te[-1]], 'g--')
+
+        # draw air brake
+        if self.airbrake:
+            start = self.airbrake['start']
+            end = self.airbrake['end']
+
+            cs = np.interp((start, end), y_positions, chord_lengths)
+            xs = np.interp((start, end), y_positions, x_positions)
+
+            plt.plot((start, end), -(xs+cs/2), 'k')
+
         # format 
         plt.axis('equal')
         plt.axis('off')
