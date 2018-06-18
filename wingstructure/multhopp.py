@@ -91,18 +91,18 @@ def solve_multhopp(alpha, y_ar, chord_ar, dcl, b, AR):
     B = np.zeros((N_M, N_M))
 
     # calculation of multhopp coefficients
-    for v,y_v,theta_v,c,dcl_v in zip(v_ar,y_ar,theta_ar,chord_ar,dcl):
-        for n,theta_n in zip(v_ar,theta_ar):
+    for v, y_v, theta_v, c, dcl_v in zip(v_ar, y_ar, theta_ar, chord_ar, dcl):
+        for n, theta_n in zip(v_ar,theta_ar):
          
             # diagonal elements
-            if(v==n):
-                B[v-1,v-1]= (N_M+1)/(4*np.sin(theta_v))+2*b/(dcl_v*c)
+            if v == n:
+                B[v-1, v-1] = (N_M+1)/(4*np.sin(theta_v))+2*b/(dcl_v*c)
             # non diagonal elements
             else:
-                B[v-1,n-1]=-((1-(-1.)**(v-n))/2*(np.sin(theta_n)/((N_M+1)*(np.cos(theta_n)-np.cos(theta_v))**2)))
+                B[v-1, n-1] = - ((1-(-1.)**(v-n))/2*(np.sin(theta_n)/((N_M+1)*(np.cos(theta_n)-np.cos(theta_v))**2)))
 
     # calculation of local circulation
-    gamma_ar = np.dot(np.linalg.inv(B),alpha)
+    gamma_ar = np.dot(np.linalg.inv(B), alpha)
 
     # lift coefficient for whole wing
     C_A = np.pi*AR/(N_M+1)*sum(gamma_ar*np.sin(v_ar*np.pi/(N_M+1)))
