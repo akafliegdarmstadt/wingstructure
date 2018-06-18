@@ -1,0 +1,38 @@
+aerodynamic:
+    C_Lmax: num(min=0.0)
+    C_Lmin: num(max=0.0)
+    C_D:    num(min=0.0)
+    C_M0:   num()
+geometry:
+    wing: include('awing')
+    elevator: include('awing')
+    fuselage: 
+        pos: include('point')
+        mass: include('massprop')
+        hooks:
+            aero-towing: include('point')
+            winch-launch: include('point')
+masses:
+    max: num(min=0.0)
+    pilot: include('massprop')
+---
+massprop:
+    value: any(num(), List(num()))
+    cg: include('point')
+---
+point: 
+    - Number()
+    - Number()
+    - Number()
+---
+awing:
+    pos: include('point')
+    mass: include('massprop', required=False)
+    sections: List([include('section')])
+    flaps: map(include('flap'), required=False)
+    airbrake: include('flap', required=False)
+---
+flap:
+    span-start: num(min=0.0)
+    span-end: num(min=0.0)
+    depth: num(min=0.0, required=False)
