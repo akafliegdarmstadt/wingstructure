@@ -1,6 +1,6 @@
 from .airfoil import Airfoil
 from .geometry import BaseWing
-from . import solve_multhopp
+from .liftingline import _solve_multhopp, _calculate_liftcoefficients
 import numpy as np
 from scipy import interpolate
 from collections import defaultdict
@@ -140,9 +140,10 @@ class LiftAnalysis(object):
 
         # TODO: refine calculation grid
         self.n = int(round(wing.aspect_ratio()) * 4 - 1)
-        vs = np.arange(1, self.n + 1)
-        self.calculation_positions = wing.span_width() / 2 * np.cos(np.arange(1, self.n + 1) * np.pi / (self.n + 1))
-        self.calculation_chord_lengths = interpolate.interp1d(self.span_positions, self.chord_lengths)(np.abs(self.calculation_positions))
+
+        self.thetas = np.linspace(np.pi/(self.n+1), self.n/(self.n+1)*np.pi, self.n)
+        self.calculation_positions = wing.span_width() / 2 * np.cos(self.thetas)
+        self.calculation_chord_lengths = np.interp(np.abs(self.calculation_positions), self.span_positions, self.chord_lengths)
         calculation_alphas = interpolate.interp1d(self.span_positions, alphas)(np.abs(self.calculation_positions))
 
         # angle of attack for whole wing: 1°
@@ -152,16 +153,18 @@ class LiftAnalysis(object):
         alphas[np.abs(self.calculation_positions) < wing.root_pos] = 0.0
 
         # TODO: use airfoils lift coefficient slope
-        dcl = np.array([2 * np.pi] * self.n)
+        self.dcl = np.array([2 * np.pi] * self.n)
 
         # use multhopp method for calculation
-        result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, dcl,
-                                wing.span_width(), wing.aspect_ratio())
-
-        self.base_alpha = np.radians(1)/result['C_L']
-        self.base_distribution = result['c_l'] / result['C_L']
+        result = _solve_multhopp(alphas, self.thetas, self.calculation_chord_lengths, wing.span_width(), self.dcl)
         
-        return result['c_l']/result['C_L']
+        c_ls, C_L = _calculate_liftcoefficients(self.thetas, result, self.calculation_chord_lengths,
+                                         wing.aspect_ratio(), wing.span_width(), self.n)
+
+        self.base_alpha = np.radians(1)/C_L
+        self.base_distribution = c_ls / C_L
+        
+        return c_ls/C_L
         
     def _calculate_aileron_distribution(self, wing, angle=np.radians(1)):
         """
@@ -189,11 +192,13 @@ class LiftAnalysis(object):
                     
                     alphas[ii] = -(0.75 * k - 0.25 * lambda_k ) * eta_keff
                     
-            result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, np.array( [2*np.pi] *self.n),
-                                            wing.span_width(), wing.aspect_ratio())
+            result = _solve_multhopp(alphas, self.thetas, self.calculation_chord_lengths, wing.span_width(), self.dcl)
             
-            distributions[name] = result['c_l']/eta_keff
-            lift[name] = result['C_L']
+            c_ls, C_L = _calculate_liftcoefficients(self.thetas, result, self.calculation_chord_lengths,
+                                         wing.aspect_ratio(), wing.span_width(), self.n)
+
+            distributions[name] = c_ls/eta_keff
+            lift[name] = C_L
     
         return distributions, lift
         
@@ -207,14 +212,14 @@ class LiftAnalysis(object):
             
             if wing.is_airbrake_pos( span_pos ):
                 #TODO: let user choose value
-                alphas[ii] = np.deg2rad(-12)
+                alphas[ii] = np.radians(-12)
             else:
                 alphas[ii] = 0
 
-        result = solve_multhopp(alphas, self.calculation_positions, self.calculation_chord_lengths, np.array( [2*np.pi] *self.n),
-                                wing.span_width(), wing.aspect_ratio())
+        result = _solve_multhopp(alphas, self.thetas, self.calculation_chord_lengths, wing.span_width(), self.dcl)
         
-        return result['c_l'], result['C_L']
+        return _calculate_liftcoefficients(self.thetas, result, self.calculation_chord_lengths,
+                                         wing.aspect_ratio(), wing.span_width(), self.n)
 
     @staticmethod
     def _calculate_eta_keff(eta_k: float or np.ndarray) -> float:
