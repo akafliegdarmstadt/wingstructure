@@ -90,3 +90,4 @@ ENV/
 
 # visual studio code workspace file
 wingstructure_code.code-workspace
+.vscode/settings.json
