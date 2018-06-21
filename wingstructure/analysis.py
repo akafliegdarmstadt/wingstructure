@@ -51,7 +51,7 @@ class LiftAnalysis(object):
             # when flap exists take flap's impact on lift into account
             if flap_name in self.flaps_lift:
                 factor = self._calculate_eta_keff(np.array(flap_deflections[flap_name]))
-                c_l -= self.flaps_lift[flap_name] * factor
+                c_l -= sum(self.flaps_lift[flap_name] * factor)
                 flap_distribution = self.flaps_distribution[flap_name]
                 distribution += flap_distribution * factor[0] + flap_distribution[::-1] * factor[1]
             # otherwise warn user
