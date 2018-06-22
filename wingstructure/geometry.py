@@ -146,6 +146,7 @@ class BaseWing(object):
     def set_root_pos(self, span_position: float) -> None:
         self.root_pos = span_position
 
+    @property
     def area(self) -> float:
         """Calculate area of the wing."""
 
@@ -156,9 +157,11 @@ class BaseWing(object):
 
         return 2*area # for both sides of wing
 
+    @property
     def aspect_ratio(self) -> float:
         return self.span_width()**2/self.area()
 
+    @property
     def mac(self) -> Section:
         """Calculates the mean aerodynamic chord."""
 
@@ -196,7 +199,8 @@ class BaseWing(object):
 
         return Section(Point(*pos.tolist()),  mac, 0, airfoil=None)
 
-    def span_width(self) -> float:
+    @property
+    def span(self) -> float:
         """Calculate the span width of wing."""
         return 2 * max((section.pos.y for section in self.sections))
           
