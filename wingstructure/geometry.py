@@ -227,7 +227,7 @@ class BaseWing(object):
     def next_airfoil(self, y: float) -> str:
         """Lookup next airfoil at given span position"""
 
-        y_positions = [section.pos.y for section in self.sections]
+        ys = [section.pos.y for section in self.sections]
 
         airfoil_index = np.argmin(np.array(y_positions)-y)
 
@@ -252,6 +252,22 @@ class BaseWing(object):
         else:
             beta = (y-self.sections[ii-1].pos.y)/(self.sections[ii].pos.y-self.sections[ii-1].pos.y)
             return {0: airfoil1, 1: airfoil2, 'beta':beta}
+
+    @property
+    def ys(self):
+        return np.array([section.pos.y for section in self.sections])
+    
+    @property
+    def chords(self):
+        return np.array([section.chord for section in self.sections])
+
+    @property
+    def alphas(self):
+        return np.array([section.alpha for section in self.sections])
+
+    @property
+    def airfoils(self):
+        return [section.airfoil for section in self.sections]
 
 
 class Flap(object):
