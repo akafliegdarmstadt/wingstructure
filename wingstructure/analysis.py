@@ -43,9 +43,9 @@ class LiftAnalysis(object):
         """
 
         # create empty array for lift distribution
-        distribution = self.base_distribution
+        distribution = np.copy(self.base_distribution)
 
-        C_L -= self.base_lift
+        C_L -= float(self.base_lift)
 
         # take air brake impact into account
         if air_brake:
@@ -64,8 +64,6 @@ class LiftAnalysis(object):
             else:
                 from warnings import warn
                 warn('flap {} does not exist'.format(flap_name))
-
-        print(C_L)
 
         return C_L, self.aoa_distribution * np.mean(C_L) + distribution
 
