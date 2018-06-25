@@ -159,7 +159,7 @@ class BaseWing(object):
 
     @property
     def aspect_ratio(self) -> float:
-        return self.span_width()**2/self.area()
+        return self.span**2/self.area
 
     @property
     def mac(self) -> Section:
@@ -229,7 +229,7 @@ class BaseWing(object):
 
         ys = [section.pos.y for section in self.sections]
 
-        airfoil_index = np.argmin(np.array(y_positions)-y)
+        airfoil_index = np.argmin(np.array(ys)-y)
 
         return self.sections[airfoil_index].airfoil
             
