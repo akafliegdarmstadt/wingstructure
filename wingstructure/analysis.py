@@ -244,9 +244,9 @@ class LiftAndMomentAnalysis(LiftAnalysis):
 
         super().__init__(wing, airfoil_db)  
         
-        cm_0 = [airfoil_db[sec.airfoil].cm0 for sec in wing.sections]
+        cm_0 = [airfoil_db[airfoil].cm0 for airfoil in wing.airfoils]
         
-        self.moment_basic_distribution = np.interp(np.abs(self.calc_ys), self.calc_ys, cm_0)
+        self.moment_basic_distribution = np.interp(np.abs(self.calc_ys), wing.ys, cm_0)
 
         self.moment_aileron_distributions = {}
 
