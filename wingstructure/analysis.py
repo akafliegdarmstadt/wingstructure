@@ -137,11 +137,11 @@ class LiftAnalysis(object):
         calculate basic lift distribution for aoa 1°
         """
 
-        alphas = list()
+        alphas = np.radians(wing.alphas)
 
-        for section in wing.sections:
+        for ii, section in enumerate(wing.sections):
             alpha0 = airfoil_db[section.airfoil].alpha0
-            alphas.append(section.alpha - alpha0)
+            alphas[ii] -= np.radians(alpha0)
 
         # TODO: refine calculation grid
         self.n = int(round(wing.aspect_ratio) * 4 - 1)
@@ -149,7 +149,7 @@ class LiftAnalysis(object):
         self.thetas = np.linspace(np.pi/(self.n+1), self.n/(self.n+1)*np.pi, self.n)
         self.calc_ys = wing.span / 2 * np.cos(self.thetas)
         self.calc_chords = np.interp(np.abs(self.calc_ys), wing.ys, wing.chords)
-        calc_alphas = np.interp(np.abs(self.calc_ys), wing.ys, wing.alphas)
+        calc_alphas = np.interp(np.abs(self.calc_ys), wing.ys, alphas)
 
         # no lift for fuselage
         calc_alphas[np.abs(self.calc_ys) < wing.root_pos] = 0.0
@@ -168,7 +168,7 @@ class LiftAnalysis(object):
         
     def _calculate_aoa_distribution(self, wing):
         """
-        
+        calculates lift distribution due to angle of attack
         """
 
         res = multhopp([1]*len(wing.chords), wing.chords, wing.ys)
