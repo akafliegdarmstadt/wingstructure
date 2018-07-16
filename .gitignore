@@ -91,3 +91,7 @@ ENV/
 # visual studio code workspace file
 wingstructure_code.code-workspace
 .vscode/settings.json
+.idea/workspace.xml
+.idea/wingstructure.iml
+.idea/vcs.xml
+.idea/modules.xml
