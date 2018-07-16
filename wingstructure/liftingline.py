@@ -11,10 +11,11 @@ from collections import namedtuple
 
 
 _multhopp_result = namedtuple('multhopp_result', ('ys','c_ls','C_L'))
+_ext_multhopp_result = namedtuple('ext_multhopp_result', ('ys', 'c_ls', 'C_L', 'αᵢs','C_Wi'))
 
 
 @jit
-def _solve_multhopp(αs, θs, chords, b, dcls):
+def _solve_multhopp(αs, θs, chords, b, dcls, return_B = False):
     """Calculates lift distribution with multhopp method.
     
     :param αs: angle of attack in radians at grid points
@@ -26,29 +27,45 @@ def _solve_multhopp(αs, θs, chords, b, dcls):
     M = len(θs)
     
     # create empyt matrix (N_MxN_M) for multhoppcoefficients
-    B = np.zeros((M, M))
+    Bb = np.zeros((M, M))
+    Bd = np.zeros(M)
 
     # calculation of multhopp coefficients
-    for v, (theta_v, c, dcl_v) in enumerate(zip(θs, chords, dcls)):
-        for n, theta_n in enumerate(θs):
+    for v, (θv, c, dcl_v) in enumerate(zip(θs, chords, dcls)):
+        for n, θn in enumerate(θs):
 
             # diagonal elements
             if v == n:
-                B[v, v] = (M+1)/(4*np.sin(theta_v))+2*b/(dcl_v*c)
+                Bb[v, v] = (M+1)/(4*np.sin(θv))
+                Bd[v] = 2*b/(dcl_v*c)
             # non diagonal elements
             else:
-                B[v, n] = - ((1-(-1.)**(v-n))/2*(np.sin(theta_n)/ \
-                            ((M+1)*(np.cos(theta_n)-np.cos(theta_v))**2)))
+                Bb[v, n] = - ((1-(-1.)**(v-n))/2*(np.sin(θn)/ \
+                            ((M+1)*(np.cos(θn)-np.cos(θv))**2)))
+
+    B = Bb + np.diag(Bd)
 
     # calculation of local circulation
     γs = np.dot(np.linalg.inv(B), αs)
 
-    return γs
+    if return_B:
+        return γs, Bb, Bd
+    else:
+        return γs
 
 def _calculate_liftcoefficients(Θs, γs, chords, Λ, b, M):
+    """calculates lift coefficients from circulation
+    
+    Args:
+        ...
+        chords (ndarray): chord lenghtes
+        b (float): span width
+        M (int): number of grid points
+    
+    Returns:
+        c_l (ndarray), C_L (float): lift distribution and wing lift coefficients
     """
-    Calculates lift coefficients with multhopp results
-    """
+
 
     # calculate lift coefficient distritbution
     c_l = 2*b/(np.array(chords)) * np.array(γs)
@@ -59,7 +76,8 @@ def _calculate_liftcoefficients(Θs, γs, chords, Λ, b, M):
     return c_l, C_L
 
 def multhopp(αs: np.array, chords: np.array, ys: np.array, dcls: np.array=None, M:int=None,
-             return_γ = False ):
+             mode = 'c_l' ):
+
 
     # calculate wingspan
     b = 2*max(ys)
@@ -91,12 +109,24 @@ def multhopp(αs: np.array, chords: np.array, ys: np.array, dcls: np.array=None,
     calc_dcls = np.interp(np.abs(calc_ys), ys, dcls)
 
     # calculate circulation distribution
-    γs = _solve_multhopp(calc_αs, θs, calc_chords, b, calc_dcls)
+    γs, Bb, Bd = _solve_multhopp(calc_αs, θs, calc_chords, b, calc_dcls, return_B=True)
 
-    if return_γ:
+    B = Bb+np.diag(Bd)
+
+    # return only ys and gamma
+    if mode in ('gamma', 'γ'):
         return calc_ys, γs
     
     # calculate coefficients
     c_ls, C_L = _calculate_liftcoefficients(θs, γs, calc_chords, Λ, b, M)
 
-    return _multhopp_result(calc_ys, c_ls, C_L)
+    if mode == 'c_l':
+        # return lift coefficients
+        return _multhopp_result(calc_ys, c_ls, C_L)
+    elif mode == 'combined':
+        # return lift coefficients, induced angle and induced drag
+
+        αᵢs = Bb@γs
+        C_Di = π*Λ/(M+1) * np.sum( γs * αᵢs * np.sin(θs))
+        
+        return _ext_multhopp_result(calc_ys, c_ls, C_L, αᵢs, C_Di)
