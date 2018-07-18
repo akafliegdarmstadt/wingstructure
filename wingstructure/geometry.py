@@ -38,11 +38,13 @@ class Airfoil(object):
         
         upper_coords = np.zeros(base_upper1.shape)
         upper_coords[:,0] = base_upper1[:,0]
-        upper_coords[:,1] = np.interp(upper_coords[:,0], base_upper2[::-1,0], base_upper2[::-1,1])*(1-beta) +(base_upper1[:,1])*beta
+        upper_coords[:,1] = np.interp(upper_coords[:,0], base_upper2[::-1,0], 
+                                        base_upper2[::-1,1])*(1-beta) +(base_upper1[:,1])*beta
         
         lower_coords = np.zeros(base_lower1.shape)
         lower_coords[:,0] = base_lower1[:,0]
-        lower_coords[:,1] = (base_lower1[:,1]*beta + np.interp(lower_coords[:,0], base_lower2[:,0], base_lower2[:,1])*(1-beta))
+        lower_coords[:,1] = (base_lower1[:,1]*beta + np.interp(lower_coords[:,0], 
+                                base_lower2[:,0], base_lower2[:,1])*(1-beta))
         
         return Airfoil(np.vstack((upper_coords, lower_coords)))
         
@@ -383,9 +385,9 @@ class Wing(BaseWing):
         y_positions = np.array(y_positions)
         
         # draw leading edge
-        plt.plot(y_positions, -np.array(x_positions), 'b' )
+        plt.plot(y_positions, -1*np.array(x_positions), 'b' )
         # draw trailing edge
-        plt.plot(y_positions, -np.array(x_positions)-np.array(chord_lengths), 'b')
+        plt.plot(y_positions, -1*np.array(x_positions)-np.array(chord_lengths), 'b')
         
         # draw flaps
         for name, aflap in self.flaps.items():

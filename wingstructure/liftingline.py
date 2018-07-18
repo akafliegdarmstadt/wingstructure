@@ -14,7 +14,7 @@ _multhopp_result = namedtuple('multhopp_result', ('ys','c_ls','C_L'))
 _ext_multhopp_result = namedtuple('ext_multhopp_result', ('ys', 'c_ls', 'C_L', 'αᵢs','C_Wi'))
 
 
-@jit
+#@jit
 def _solve_multhopp(αs, θs, chords, b, dcls, return_B = False):
     """Calculates lift distribution with multhopp method.
     
@@ -25,7 +25,7 @@ def _solve_multhopp(αs, θs, chords, b, dcls, return_B = False):
     :rtype: dict
     """
     M = len(θs)
-    
+
     # create empyt matrix (N_MxN_M) for multhoppcoefficients
     Bb = np.zeros((M, M))
     Bd = np.zeros(M)
@@ -45,9 +45,13 @@ def _solve_multhopp(αs, θs, chords, b, dcls, return_B = False):
 
     B = Bb + np.diag(Bd)
 
+    #print(B)
+
+    #print(B.shape, αs.shape)
     # calculation of local circulation
     γs = np.dot(np.linalg.inv(B), αs)
 
+    #print(γs)
     if return_B:
         return γs, Bb, Bd
     else:
@@ -75,27 +79,12 @@ def _calculate_liftcoefficients(Θs, γs, chords, Λ, b, M):
 
     return c_l, C_L
 
-def multhopp(αs: np.array, chords: np.array, ys: np.array, dcls: np.array=None, M:int=None,
-             mode = 'c_l' ):
-
-
-    # calculate wingspan
-    b = 2*max(ys)
-
-    # calculate wing area
-    S = 2 * np.trapz(y=chords, x=ys)
-    
-    # calculate aspect ratio
-    Λ = b**2 / S
-
+def calcgridpoints(ys: np.array, b:float, Λ:float, M:int = None):
     # calculate number of gridpoints
     if M is None:
         M = int(round(Λ)*4-1) # has to be uneven, not more than 4*aspect ratio
     elif M%2 == 0:
         M += 1 # has to be uneven
-
-    if not dcls:
-        dcls = [2*np.pi]*len(chords)
 
     # grid points as angle
     θs = np.linspace(np.pi/(M+1), M/(M+1)*np.pi, M)
@@ -103,10 +92,43 @@ def multhopp(αs: np.array, chords: np.array, ys: np.array, dcls: np.array=None,
     # calculate grid points
     calc_ys = -b/2 * np.cos(θs)
 
+    return θs, calc_ys
+
+def multhopp(αs: np.array, chords: np.array, ys: np.array, dcls: np.array=np.nan, M:int=None,
+             mode = 'c_l', interp = True, data=None ):
+
+    
+    if np.isnan(dcls).all():
+        dcls = np.array([2*π]*len(ys))
+
     # interpolate
-    calc_αs = np.interp(np.abs(calc_ys), ys, αs)
-    calc_chords = np.interp(np.abs(calc_ys), ys, chords)
-    calc_dcls = np.interp(np.abs(calc_ys), ys, dcls)
+    if interp: 
+        # calculate wingspan
+        b = 2*max(ys)
+
+        # calculate wing area
+        S = 2 * np.trapz(y=chords, x=ys)
+        
+        # calculate aspect ratio
+        Λ = b**2 / S
+        θs, calc_ys = calcgridpoints(ys, b, Λ, M)
+        
+        calc_αs = np.interp(np.abs(calc_ys), ys, αs)
+        calc_chords = np.interp(np.abs(calc_ys), ys, chords)
+        calc_dcls = np.interp(np.abs(calc_ys), ys, dcls)
+    else:
+        b = data['b']
+        S = data['S']
+        Λ = b**2/S
+
+        calc_ys = ys
+        calc_chords = chords
+        calc_αs = αs
+        calc_dcls = dcls
+
+        θs = np.arccos(-2*calc_ys/b)
+
+        #print(θs)
 
     # calculate circulation distribution
     γs, Bb, Bd = _solve_multhopp(calc_αs, θs, calc_chords, b, calc_dcls, return_B=True)

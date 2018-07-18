@@ -5,15 +5,15 @@ import numpy as np
 from scipy import interpolate
 
 from .airfoil import Airfoil
-from .geometry import BaseWing
-from .liftingline import _calculate_liftcoefficients, _solve_multhopp, multhopp
+from .geometry import Wing
+from .liftingline import multhopp, calcgridpoints
 
 
 class LiftAnalysis(object):
     """
     Class for simplified handling of Multhopp
     """
-    def __init__(self, wing: BaseWing, airfoil_db: dict = None):
+    def __init__(self, wing: Wing, airfoil_db: dict = None):
         """
         Initialise Analysis object, calculate distributions
         """
@@ -23,15 +23,69 @@ class LiftAnalysis(object):
             warn('No airfoil database defined, using default airfoil.')
             airfoil_db = defaultdict(Airfoil)
 
-        # calculate the distributions
-        # 1) lift distribution of wing without any flaps set
-        self._calculate_base_distribution(wing, airfoil_db)
-        # 2) lift distribution of individual flaps
-        self.flaps_distribution, self.flaps_lift = self._calculate_aileron_distribution(wing)
-        # 3) lift distribution of airbrakes
-        self.airbrake_distribution, self.airbrake_lift = self._calculate_airbrake_distribution(wing)
-        # 4) lift distribution due to angle of attack
-        self._calculate_aoa_distribution(wing)
+        # calculate grid points
+        θs, self.calc_ys = calcgridpoints(wing.ys, wing.span, wing.aspect_ratio)
+
+        # number of gridpoints
+        M = len(θs)
+
+        # interpolate 
+        self.calc_chords = np.interp(np.abs(self.calc_ys), wing.ys, wing.chords)
+        calc_dcls = np.array([2*np.pi]*len(self.calc_ys))
+
+        # shorter multhopp call
+        def multhopp_(αs):
+            #print(self.calc_chords, self.calc_ys, calc_dcls)
+            res = multhopp(αs, self.calc_chords, self.calc_ys, calc_dcls, M=M,
+                                         mode='combined', interp=False, data={'b':wing.span, 'S':wing.area})
+            return res.c_ls, res.C_L, res.C_Wi
+
+        # calculate distributions
+
+        ## base distribution
+        αs_base = np.interp(np.abs(self.calc_ys), wing.ys, wing.alphas)
+        self.base_liftdist, self.base_lift, self.base_drag = multhopp_(αs_base)
+
+        ## flap distributions
+        self.flap_liftdist = {}
+        self.flap_lift = {}
+        self.flap_drag = {}
+        for name, flap in wing.flaps.items():
+            αs_flap = self._calculate_flap_α(flap)
+            self.flap_liftdist[name], self.flap_lift[name], self.flap_drag[name] = multhopp_(αs_flap)
+
+        ## air brake distribution
+        if wing.airbrake:
+            from numpy import abs
+            α_ab = np.zeros(M)
+            α_ab[ (abs(self.calc_ys)>wing.airbrake['start']) & (abs(self.calc_ys)<wing.airbrake['end'])] = np.radians(-12)
+            self.airbrake_distribution, self.airbrake_lift, self.airbrake_drag = multhopp_(α_ab)
+
+        ## lift due to angle of attack
+        α_aoa = np.array([1]*M)
+        self.aoa_c_ls, aoa_C_L, self.aoa_C_Di = multhopp_(α_aoa)
+        self.aoa_c_ls /= aoa_C_L
+        self.aoa_α = np.rad2deg(1/aoa_C_L)
+
+    def _calculate_flap_α(self, flap, angle=np.radians(1)):
+
+        alphas = np.zeros(len(self.calc_ys))
+            
+        for ii, span_pos in enumerate(self.calc_ys):
+            
+            if flap.depth_at(span_pos) > 0 and span_pos > 0:
+                
+                lambda_k = flap.depth_at(span_pos)
+                
+                eta_k = angle
+                
+                k = -2 / np.pi * (np.sqrt(lambda_k * (1-lambda_k)) + np.arcsin(np.sqrt(lambda_k)))
+        
+                eta_keff = self._calculate_eta_keff(eta_k)
+                
+                alphas[ii] = -(0.75 * k - 0.25 * lambda_k ) * eta_keff
+
+        return alphas
 
     def _calculate(self, C_L: float, air_brake=False, flap_deflections={})->tuple:
         """
@@ -42,32 +96,38 @@ class LiftAnalysis(object):
         :return: (angle of attack, lift distribution)
         """
 
+        # create float variable for drag
+        C_Di = self.base_drag
+
         # create empty array for lift distribution
-        distribution = np.copy(self.base_distribution)
+        distribution = np.copy(self.base_liftdist)
 
         C_L -= float(self.base_lift)
+
 
         # take air brake impact into account
         if air_brake:
             C_L -= self.airbrake_lift
+            C_Di += self.airbrake_drag
             distribution += self.airbrake_distribution
 
         # iterate over given flap deflections
         for flap_name in flap_deflections:
             # when flap exists take flap's impact on lift into account
-            if flap_name in self.flaps_lift:
+            if flap_name in self.flap_lift:
                 factor = self._calculate_eta_keff(np.array(flap_deflections[flap_name]))
-                C_L -= self.flaps_lift[flap_name] * factor
-                flap_distribution = self.flaps_distribution[flap_name]
+                C_L -= self.flap_lift[flap_name] * factor
+                C_Di += self.flap_drag[flap_name] * factor
+                flap_distribution = self.flap_liftdist[flap_name]
                 distribution += flap_distribution * factor[0] + flap_distribution[::-1] * factor[1]
             # otherwise warn user
             else:
                 from warnings import warn
                 warn('flap {} does not exist'.format(flap_name))
 
-        return C_L, self.aoa_distribution * np.mean(C_L) + distribution
+        return C_L, self.aoa_c_ls * np.mean(C_L) + distribution, C_Di
 
-    def calculate(self, C_L: float, air_brake=False, flap_deflections={})->tuple:
+    def calculate(self, C_L: float, air_brake=False, flap_deflections={}, return_C_Di=False)->tuple:
         """
         Calculates the lift distribution for specific lift an defined flap settings
         :param c_l: demanded lift coefficient for whole wing
@@ -76,9 +136,12 @@ class LiftAnalysis(object):
         :return: (angle of attack, lift distribution)
         """
 
-        C_L_, c_ls = self._calculate(C_L, air_brake, flap_deflections)
-                
-        return self.aoa_base_angle * np.mean(C_L_), c_ls
+        C_L_, c_ls, C_Di = self._calculate(C_L, air_brake, flap_deflections)
+
+        if not return_C_Di:
+            return self.aoa_α * np.mean(C_L_), c_ls
+        else:
+            return self.aoa_α * np.mean(C_L_), c_ls, C_Di
 
     def calculate_resultant(self, C_L, air_brake=False, flap_deflections={})->tuple:
         """
@@ -132,105 +195,7 @@ class LiftAnalysis(object):
 
         return (*y_lever, *C_L_)
 
-    def _calculate_base_distribution(self, wing, airfoil_db):
-        """
-        calculate basic lift distribution for aoa 1°
-        """
-
-        alphas = np.radians(wing.alphas)
-
-        for ii, section in enumerate(wing.sections):
-            alpha0 = airfoil_db[section.airfoil].alpha0
-            alphas[ii] -= np.radians(alpha0)
-
-        # TODO: refine calculation grid
-        self.n = int(round(wing.aspect_ratio) * 4 - 1)
-
-        self.thetas = np.linspace(np.pi/(self.n+1), self.n/(self.n+1)*np.pi, self.n)
-        self.calc_ys = wing.span / 2 * np.cos(self.thetas)
-        self.calc_chords = np.interp(np.abs(self.calc_ys), wing.ys, wing.chords)
-        calc_alphas = np.interp(np.abs(self.calc_ys), wing.ys, alphas)
-
-        # no lift for fuselage
-        calc_alphas[np.abs(self.calc_ys) < wing.root_pos] = 0.0
-
-        # TODO: use airfoils lift coefficient slope
-        self.dcl = np.array([2 * np.pi] * self.n)
-
-        # use multhopp method for calculation
-        result = _solve_multhopp(calc_alphas, self.thetas, self.calc_chords, wing.span, self.dcl)
-        
-        c_ls, C_L = _calculate_liftcoefficients(self.thetas, result, self.calc_chords,
-                                         wing.aspect_ratio, wing.span, self.n)
-
-        self.base_lift = C_L
-        self.base_distribution = c_ls
-        
-    def _calculate_aoa_distribution(self, wing):
-        """
-        calculates lift distribution due to angle of attack
-        """
-
-        res = multhopp([1]*len(wing.chords), wing.chords, wing.ys)
-
-        self.aoa_distribution = res.c_ls/res.C_L
-        self.aoa_base_angle = np.rad2deg(1/res.C_L)
-
-    def _calculate_aileron_distribution(self, wing, angle=np.radians(1)):
-        """
-        calculates aileron lift distributions and lift coefficients
-        """
-
-        distributions = {}
-        lift = {}
-        
-        for name, flap in wing.flaps.items():
-            
-            alphas = np.zeros(len(self.calc_ys))
-            
-            for ii, span_pos in enumerate(self.calc_ys):
-                
-                if flap.depth_at(span_pos) > 0 and span_pos > 0:
-                    
-                    lambda_k = flap.depth_at(span_pos)
-                    
-                    eta_k = angle
-                    
-                    k = -2 / np.pi * (np.sqrt(lambda_k * (1-lambda_k)) + np.arcsin(np.sqrt(lambda_k)))
-            
-                    eta_keff = self._calculate_eta_keff(eta_k)
-                    
-                    alphas[ii] = -(0.75 * k - 0.25 * lambda_k ) * eta_keff
-                    
-            result = _solve_multhopp(alphas, self.thetas, self.calc_chords, wing.span, self.dcl)
-            
-            c_ls, C_L = _calculate_liftcoefficients(self.thetas, result, self.calc_chords,
-                                         wing.aspect_ratio, wing.span, self.n)
-
-            distributions[name] = c_ls/eta_keff
-            lift[name] = C_L
     
-        return distributions, lift
-        
-    def _calculate_airbrake_distribution(self, wing):
-        """
-        calculates airbrake lift distribution and lift coefficient
-        """
-        alphas = np.zeros(self.n)
-        
-        for ii, span_pos in enumerate(self.calc_ys):
-            
-            if wing.is_airbrake_pos( span_pos ):
-                #TODO: let user choose value
-                alphas[ii] = np.radians(-12)
-            else:
-                alphas[ii] = 0
-
-        result = _solve_multhopp(alphas, self.thetas, self.calc_chords, wing.span, self.dcl)
-        
-        return _calculate_liftcoefficients(self.thetas, result, self.calc_chords,
-                                         wing.aspect_ratio, wing.span, self.n)
-
     @staticmethod
     def _calculate_eta_keff(eta_k: float or np.ndarray) -> float:
         return 22.743 * np.arctan(0.04715 * eta_k)
@@ -240,7 +205,7 @@ class LiftAndMomentAnalysis(LiftAnalysis):
     """
     Extended Analysis, calculates lift and moments
     """
-    def __init__(self, wing: BaseWing, airfoil_db: dict = None):
+    def __init__(self, wing: Wing, airfoil_db: dict = None):
 
         super().__init__(wing, airfoil_db)  
         
