@@ -10,5 +10,5 @@ def test_simple_wing_creation():
     wing.add_section(Point(0,0,0), 1)
     wing.add_section(Point(0,1,0), 1)
 
-    assert wing.area()==2.
-    assert wing.span_width()==2.
+    assert wing.area==2.
+    assert wing.span==2.
