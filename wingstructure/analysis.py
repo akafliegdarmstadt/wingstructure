@@ -15,7 +15,7 @@ class LiftAnalysis(object):
     """
     def __init__(self, wing: Wing, airfoil_db: dict = None):
         """
-        Initialise Analysis object, calculate distributions
+        Initialize Analysis object, calculate distributions
         """
 
         # use default airfoil if no database is set
@@ -117,7 +117,7 @@ class LiftAnalysis(object):
             if flap_name in self.flap_lift:
                 factor = self._calculate_eta_keff(np.array(flap_deflections[flap_name]))
                 C_L -= self.flap_lift[flap_name] * factor
-                C_Di += self.flap_drag[flap_name] * factor
+                C_Di += self.flap_drag[flap_name] * np.abs(factor)
                 flap_distribution = self.flap_liftdist[flap_name]
                 distribution += flap_distribution * factor[0] + flap_distribution[::-1] * factor[1]
             # otherwise warn user
@@ -125,7 +125,7 @@ class LiftAnalysis(object):
                 from warnings import warn
                 warn('flap {} does not exist'.format(flap_name))
 
-        return C_L, self.aoa_c_ls * np.mean(C_L) + distribution, C_Di
+        return C_L, self.aoa_c_ls * np.mean(C_L) + distribution, np.mean(C_Di) + self.aoa_C_Di*np.mean(C_L)
 
     def calculate(self, C_L: float, air_brake=False, flap_deflections={}, return_C_Di=False)->tuple:
         """
