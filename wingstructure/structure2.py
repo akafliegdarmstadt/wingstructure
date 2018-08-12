@@ -8,20 +8,26 @@ from shapely.algorithms import cga
 
 class _AbstractBase(ABC):
     def __init__(self):
-            self.children = []
-            self.geometry = None
+        self.children = []
+        self.geometry = None
     
     def _update(self, interior):
         for child in self.children:
             child._update()
     
     def _addchild(self, child):
+        print('jojo')
         self.children.append(child)
+
+    @property
+    def cut_elements(self):
+        return []
 
 class _AbstractBaseStructure(_AbstractBase):
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
+        self._cut_elements = []
         parent._addchild(self)
 
     @property
@@ -46,6 +52,10 @@ class _AbstractBaseStructure(_AbstractBase):
             return 'left'
         else:
             return 'right'
+    
+    @property
+    def cut_elements(self):
+        return [*self.parent.cut_elements,*self._cut_elements]
 
 
 class BaseAirfoil(_AbstractBase):
@@ -63,8 +73,15 @@ class BaseAirfoil(_AbstractBase):
         height = bounds[3]-bounds[1]
         width = bounds[2]-bounds[0]
 
-        string = """<svg viewBox=\"{}\" xmlns="http://www.w3.org/2000/svg">
-                  {}</svg>""".format("0, 0, {}, {}".format(width, height),"{}")
+        string = '<svg viewBox=\"{}\" xmlns="http://www.w3.org/2000/svg">\
+                    <defs>\
+                        <!-- simple dot marker definition -->\
+                        <marker id="dot" viewBox="0 0 10 10" refX="5" refY="5"\
+                            markerWidth="3" markerHeight="3">\
+                        <circle cx="5" cy="5" r="5" fill="red" />\
+                        </marker>\
+                    </defs>\
+                  {}</svg>'.format("0, 0, {}, {}".format(width, height),"{}")
 
         heigth_offset = -bounds[3]
         width_offset = bounds[0] 
@@ -72,9 +89,18 @@ class BaseAirfoil(_AbstractBase):
         return string, (width_offset, heigth_offset)
 
     def _repr_svg_(self):
-        string, offset = self.svgdata
-        pts = np.array(self.geometry.coords)
-        return string.format(svgpolyline(pts, offset))
+        def collectgeometry(part):
+            collection = []
+            for child in part.children:
+                collection.extend(collectgeometry(child))
+            collection.append(part.geometry)
+            return collection
+
+        collection = collectgeometry(self)
+
+        shply_collection = geom.GeometryCollection(collection)
+
+        return shply_collection._repr_svg_()
 
 
 class Layer(_AbstractBaseStructure):
@@ -98,6 +124,9 @@ class Layer(_AbstractBaseStructure):
             self.interior = geom.LinearRing(self.interior)
 
         self.geometry = geom.Polygon(exterior)-geom.Polygon(self.interior)
+
+        for elem in self.cut_elements:
+            self.geometry -= elem
 
     def _repr_svg_(self):
         string, offset = self.svgdata
@@ -126,22 +155,40 @@ class Reinforcement(Layer):
 
         tmp_geometries = []
 
-        self.interior = geom.LinearRing(exterior)
+        tmp_interior = geom.Polygon(exterior)
 
         for ageo in intersection.geoms:
-            tmp_geometry = self._create_offset_box(ageo, self.thickness, side)
-            self.interior -= tmp_geometry
+            tmp_geometry = self._create_offset_box(ageo, self.thickness, side, symmetric=False)
+            tmp_interior -= tmp_geometry
             tmp_geometries.append(tmp_geometry)
 
-        self.geometry = tmp_geometries
+        self.geometry = geom.GeometryCollection(tmp_geometries)
 
+        self.interior = geom.LinearRing(tmp_interior.exterior)
         self._refine_interior()
 
     def _refine_interior(self):
+        
         if self.interior.type == 'MultiLineString':
-           self.interior = geom.LinearRing(self.interior.geoms[1])
+           self.interior = geom.LinearRing(self.interior.geoms[0])
         else:
             self.interior = geom.LinearRing(self.interior)
+
+        # find bugs in interior and remove them
+        pts = np.array(self.interior)[:-1,:]
+        del_pts = []
+
+        for ii in range(len(pts)):
+            
+            vec1 = pts[ii]-pts[ii-1]
+            vec2 = pts[(ii+1)%len(pts)]-pts[ii]
+            
+            if(np.linalg.norm(vec1/np.linalg.norm(vec1)+vec2/np.linalg.norm(vec2))<1e-3):
+                del_pts.append(ii)
+
+        pts2 = np.delete(pts, del_pts, axis=0)
+        
+        self.interior = geom.LinearRing(pts2)
 
     def _repr_svg_(self):
          string, offset = self.svgdata
@@ -149,10 +196,15 @@ class Reinforcement(Layer):
                                                     offset)+\
                             svgpolyline(np.array(self.geometry[1].exterior.coords),
                                                     offset))
-    def _create_offset_box(self, line, thickness, side, bevel=0.0):
+
+    def _create_offset_box(self, line, thickness, side, bevel=0.0, symmetric=False ):
         
         offsetline = line.parallel_offset(thickness, side=side)
         
+        if symmetric:
+            offsetline2 = line.parallel_offset(thickness, side=otherside(side))
+            line = offsetline2
+
         if bevel > 0.0:
             
             raise Exception('Beveling not yet implemented')
@@ -166,8 +218,83 @@ class Reinforcement(Layer):
             connect2 = geom.LineString((line.coords[0], offsetline.coords[-1]))
             return geom.Polygon(ops.linemerge((offsetline,connect1,line,connect2)))
 
+class Display(object):
+    def __init__(self, geometry):
+        self.geometry = geometry
+    
+    def _repr_svg_(self):
+        bounds = self.geometry.bounds
+        height = bounds[3]-bounds[1]
+        width = bounds[2]-bounds[0]
+
+        string = '<svg viewBox=\"{}\" xmlns="http://www.w3.org/2000/svg">\
+                    <defs>\
+                        <!-- simple dot marker definition -->\
+                        <marker id="dot" viewBox="0 0 10 10" refX="5" refY="5"\
+                            markerWidth="5" markerHeight="5">\
+                        <circle cx="5" cy="5" r="5" fill="red" />\
+                        </marker>\
+                    </defs>\
+                  {}</svg>'.format("0, 0, {}, {}".format(width, height),"{}")
+
+        offset = [bounds[0], -bounds[3]]
+
+        try:
+            pts = np.array(self.geometry)
+        except:
+            try:
+                pts = np.array(self.geometry.exterior)
+            except:
+                return ''
+
+        return string.format(svgpolyline(pts, offset))
+
+
+class BoxSpar(_AbstractBaseStructure):
+    def __init__(self, parent, midpos: float, width: float, flangeheigt, webwidth):
+        super().__init__(parent)
+        self.midpos = midpos
+        self.width = width
+        self.interior = None
+        self.flangeheigt = flangeheigt
+        self.webwidth = webwidth
+
+        self._update_geometry(parent.interior)
+
+    def _update_geometry(self, exterior):
+        self.interior = exterior
+        start = self.midpos-self.width/2
+        end = self.midpos+self.width/2
+
+        abox = geom.box(start, exterior.bounds[1]-3, end, exterior.bounds[3]+3)
+
+        intersection = abox.intersection(geom.Polygon(exterior))
+
+        for elem in self.cut_elements:
+            if not intersection.intersects(elem):
+                continue
+            raise Exception('Cannot use cut element in cut element')
+
+        anotherbox = geom.box(start+self.webwidth,
+                              exterior.bounds[1]-3,
+                              end-self.webwidth,
+                              exterior.bounds[3]+3)
+
+        web = intersection-anotherbox
+        flangebox = intersection.intersection(anotherbox)
+
+        flangcutout = geom.box(start, flangebox.bounds[1]+self.flangeheigt,
+                               end, flangebox.bounds[3]-self.flangeheigt)
+
+        flange = flangebox-flangcutout
+
+        self.geometry = geom.GeometryCollection([*web.geoms, *flange.geoms])       
+
+        self._cut_elements = [abox]
+
+
 def svgpolyline(pts, offset):
-    string = "<polyline points=\"{}\" fill=\"none\" stroke=\"black\" />"
+    string = "<polyline points=\"{}\" fill=\"none\" stroke=\"black\" marker-start=\"url(#dot)\" marker-mid=\"url(#dot)\"  marker-end=\"url(#dot)\"  />"
 
     return string.format(svgpts(pts, offset))
 
@@ -177,3 +304,9 @@ def svgpts(pts, offset=(0,0)):
     pts[:,0] -= offset[0]
     
     return " ".join(("{},{}".format(*row) for row in pts))
+
+def otherside(side):
+    if side=='left':
+        return 'right'
+    else:
+        return 'left'
