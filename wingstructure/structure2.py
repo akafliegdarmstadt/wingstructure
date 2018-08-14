@@ -16,7 +16,6 @@ class _AbstractBase(ABC):
             child._update()
     
     def _addchild(self, child):
-        print('jojo')
         self.children.append(child)
 
     @property
@@ -24,9 +23,10 @@ class _AbstractBase(ABC):
         return []
 
 class _AbstractBaseStructure(_AbstractBase):
-    def __init__(self, parent):
+    def __init__(self, parent, material):
         super().__init__()
         self.parent = parent
+        self.material = material
         self._cut_elements = []
         parent._addchild(self)
 
@@ -44,6 +44,21 @@ class _AbstractBaseStructure(_AbstractBase):
     def _update_geometry(self, exterior):
         pass
 
+    @property
+    def massproperties(self):
+        return self.geometry.centroid, self.geometry.area*self.material.ρ
+
+    def _sum_massproperties(self):
+        mass = 0.0
+        cg = np.zeros(2)
+        for child in self.children:
+            childcg, childmass = child.massproperties
+
+            mass += childmass
+            cg += childmass * np.array(childcg)
+        
+        return geom.Point(cg/mass), mass
+
     def _get_inside_direction(self, linearring):
         """Gets the inside direction for parallel offset (left or right)
         from signed area of geometry"""
@@ -58,7 +73,7 @@ class _AbstractBaseStructure(_AbstractBase):
         return [*self.parent.cut_elements,*self._cut_elements]
 
 
-class BaseAirfoil(_AbstractBase):
+class SectionBase(_AbstractBase):
     def __init__(self, airfoil_coordinates):
         super().__init__()
         self.geometry = geom.LinearRing(airfoil_coordinates)
@@ -101,11 +116,14 @@ class BaseAirfoil(_AbstractBase):
         shply_collection = geom.GeometryCollection(collection)
 
         return shply_collection._repr_svg_()
+    
+    def massproperties(self):
+        return self.children[0]._sum_massproperties()
 
 
 class Layer(_AbstractBaseStructure):
-    def __init__(self, parent, thickness=0.0):
-        super().__init__(parent)
+    def __init__(self, parent, material, thickness=0.0):
+        super().__init__(parent, material)
         self.thickness = thickness
 
         self.interior = None
@@ -135,9 +153,10 @@ class Layer(_AbstractBaseStructure):
                             svgpolyline(np.array(self.geometry.exterior.coords),
                                                     offset))
 
+
 class Reinforcement(Layer):
-    def __init__(self, parent, thickness=0.0, limits=None):
-        _AbstractBaseStructure.__init__(self, parent)#TODO fix
+    def __init__(self, parent, material, thickness=0.0, limits=None):
+        _AbstractBaseStructure.__init__(self, parent, material)#TODO fix
         self.thickness = thickness
         self.limits = limits
 
@@ -251,8 +270,8 @@ class Display(object):
 
 
 class BoxSpar(_AbstractBaseStructure):
-    def __init__(self, parent, midpos: float, width: float, flangeheigt, webwidth):
-        super().__init__(parent)
+    def __init__(self, parent, material, midpos: float, width: float, flangeheigt, webwidth):
+        super().__init__(parent, material)
         self.midpos = midpos
         self.width = width
         self.interior = None
@@ -291,6 +310,35 @@ class BoxSpar(_AbstractBaseStructure):
         self.geometry = geom.GeometryCollection([*web.geoms, *flange.geoms])       
 
         self._cut_elements = [abox]
+
+    @property
+    def massproperties(self):
+        if type(self.material) is dict:
+            try:
+                webmaterial = self.material['web']
+                flangematerial = self.material['flange']
+            except:
+                raise Exception('wrong material defintion')
+
+            mass = 0.0
+            cg = np.zeros(2)
+
+            for ii, geom in enumerate(self.geometry.geoms):
+                if ii<2:
+                    material = webmaterial
+                else:
+                    material = flangematerial
+                
+                tmpmass = geom.area*material.ρ 
+                mass += tmpmass
+                cg += np.array(geom.centroid) * tmpmass
+            mass = (self.geometry.geoms[0].area+self.geometry.geoms[1])*webmaterial.ρ \
+                    + (self.geometry.geoms[2].area+self.geometry.geoms[3])*flangematerial.ρ 
+            cg /= mass
+
+            return geom.Point(cg), mass
+        else:
+            return super().massproperties
 
 
 def svgpolyline(pts, offset):
