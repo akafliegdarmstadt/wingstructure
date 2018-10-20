@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
+from numpy.linalg import norm
+
 from shapely import geometry as geom, ops
 from shapely.algorithms import cga
 
@@ -10,7 +12,7 @@ class _AbstractBase(ABC):
     def __init__(self):
         self.children = []
         self.geometry = None
-    
+  
     def _update(self, interior):
         for child in self.children:
             child._update()
@@ -21,6 +23,7 @@ class _AbstractBase(ABC):
     @property
     def cut_elements(self):
         return []
+
 
 class _AbstractBaseStructure(_AbstractBase):
     def __init__(self, parent, material):
@@ -46,7 +49,7 @@ class _AbstractBaseStructure(_AbstractBase):
 
     @property
     def massproperties(self):
-        return self.geometry.centroid, self.geometry.area*self.material.ρ
+        return (self.geometry.centroid, self.geometry.area*self.material.ρ)
 
     def _sum_massproperties(self):
         mass = 0.0
@@ -68,9 +71,31 @@ class _AbstractBaseStructure(_AbstractBase):
         else:
             return 'right'
     
+    def _create_offset_box(self, line, thickness, side, bevel=0.0,
+                           symmetric=False):
+        
+        offsetline = line.parallel_offset(thickness, side=side)
+        
+        if symmetric:
+            offsetline2 = line.parallel_offset(thickness, side=otherside(side))
+            line = offsetline2
+
+        if bevel > 0.0:
+            
+            raise Exception('Beveling not yet implemented')
+        
+        if side == 'left':
+            connect1 = geom.LineString((line.coords[-1], offsetline.coords[-1]))
+            connect2 = geom.LineString((line.coords[0], offsetline.coords[0]))
+            return geom.Polygon(ops.linemerge((line, connect1, offsetline, connect2)))
+        else:
+            connect1 = geom.LineString((line.coords[-1],offsetline.coords[0]))
+            connect2 = geom.LineString((line.coords[0], offsetline.coords[-1]))
+            return geom.Polygon(ops.linemerge((offsetline,connect1,line,connect2)))
+
     @property
     def cut_elements(self):
-        return [*self.parent.cut_elements,*self._cut_elements]
+        return [*self.parent.cut_elements, *self._cut_elements]
 
 
 class SectionBase(_AbstractBase):
@@ -96,7 +121,7 @@ class SectionBase(_AbstractBase):
                         <circle cx="5" cy="5" r="5" fill="red" />\
                         </marker>\
                     </defs>\
-                  {}</svg>'.format("0, 0, {}, {}".format(width, height),"{}")
+                  {}</svg>'.format("0, 0, {}, {}".format(width, height), "{}")
 
         heigth_offset = -bounds[3]
         width_offset = bounds[0] 
@@ -134,7 +159,8 @@ class Layer(_AbstractBaseStructure):
         
         inside_direction = self._get_inside_direction(exterior)
 
-        self.interior = exterior.parallel_offset(self.thickness, side=inside_direction)
+        self.interior = exterior.parallel_offset(self.thickness,
+                                                 side=inside_direction)
 
         if self.interior.type == 'MultiLineString':
                     self.interior = geom.LinearRing(self.interior.geoms[0])
@@ -149,14 +175,14 @@ class Layer(_AbstractBaseStructure):
     def _repr_svg_(self):
         string, offset = self.svgdata
         return string.format(svgpolyline(np.array(self.geometry.interiors[0].coords),
-                                                    offset)+\
+                                                    offset) + \
                             svgpolyline(np.array(self.geometry.exterior.coords),
                                                     offset))
 
 
 class Reinforcement(Layer):
     def __init__(self, parent, material, thickness=0.0, limits=None):
-        _AbstractBaseStructure.__init__(self, parent, material)#TODO fix
+        _AbstractBaseStructure.__init__(self, parent, material)  #TODO fix
         self.thickness = thickness
         self.limits = limits
 
@@ -165,8 +191,8 @@ class Reinforcement(Layer):
         self._update_geometry(parent.interior)
     
     def _update_geometry(self, exterior):
-        limited_box = geom.box(self.limits[0], exterior.bounds[1]*1.1, 
-                        self.limits[1], exterior.bounds[3]*1.1)
+        limited_box = geom.box(self.limits[0], exterior.bounds[1]*1.1,
+                               self.limits[1], exterior.bounds[3]*1.1)
 
         intersection = limited_box.intersection(exterior)
 
@@ -177,7 +203,8 @@ class Reinforcement(Layer):
         tmp_interior = geom.Polygon(exterior)
 
         for ageo in intersection.geoms:
-            tmp_geometry = self._create_offset_box(ageo, self.thickness, side, symmetric=False)
+            tmp_geometry = self._create_offset_box(ageo, self.thickness, side, 
+                                                   symmetric=False)
             tmp_interior -= tmp_geometry
             tmp_geometries.append(tmp_geometry)
 
@@ -189,20 +216,20 @@ class Reinforcement(Layer):
     def _refine_interior(self):
         
         if self.interior.type == 'MultiLineString':
-           self.interior = geom.LinearRing(self.interior.geoms[0])
+            self.interior = geom.LinearRing(self.interior.geoms[0])
         else:
             self.interior = geom.LinearRing(self.interior)
 
         # find bugs in interior and remove them
-        pts = np.array(self.interior)[:-1,:]
+        pts = np.array(self.interior)[:-1, :]
         del_pts = []
 
         for ii in range(len(pts)):
             
             vec1 = pts[ii]-pts[ii-1]
-            vec2 = pts[(ii+1)%len(pts)]-pts[ii]
+            vec2 = pts[(ii+1) % len(pts)]-pts[ii]
             
-            if(np.linalg.norm(vec1/np.linalg.norm(vec1)+vec2/np.linalg.norm(vec2))<1e-3):
+            if(np.linalg.norm(vec1/norm(vec1)+vec2/norm(vec2)) < 1e-3):
                 del_pts.append(ii)
 
         pts2 = np.delete(pts, del_pts, axis=0)
@@ -210,32 +237,12 @@ class Reinforcement(Layer):
         self.interior = geom.LinearRing(pts2)
 
     def _repr_svg_(self):
-         string, offset = self.svgdata
-         return string.format(svgpolyline(np.array(self.geometry[0].exterior.coords),
+        string, offset = self.svgdata
+        return string.format(svgpolyline(np.array(self.geometry[0].exterior.coords),
                                                     offset)+\
                             svgpolyline(np.array(self.geometry[1].exterior.coords),
                                                     offset))
 
-    def _create_offset_box(self, line, thickness, side, bevel=0.0, symmetric=False ):
-        
-        offsetline = line.parallel_offset(thickness, side=side)
-        
-        if symmetric:
-            offsetline2 = line.parallel_offset(thickness, side=otherside(side))
-            line = offsetline2
-
-        if bevel > 0.0:
-            
-            raise Exception('Beveling not yet implemented')
-        
-        if side == 'left':
-            connect1 = geom.LineString((line.coords[-1],offsetline.coords[-1]))
-            connect2 = geom.LineString((line.coords[0], offsetline.coords[0]))
-            return geom.Polygon(ops.linemerge((line,connect1,offsetline,connect2)))
-        else:
-            connect1 = geom.LineString((line.coords[-1],offsetline.coords[0]))
-            connect2 = geom.LineString((line.coords[0], offsetline.coords[-1]))
-            return geom.Polygon(ops.linemerge((offsetline,connect1,line,connect2)))
 
 class Display(object):
     def __init__(self, geometry):
@@ -269,8 +276,72 @@ class Display(object):
         return string.format(svgpolyline(pts, offset))
 
 
+class ISpar(_AbstractBaseStructure):
+    def __init__(self, parent, material, midpos: float, flangewidth: float,
+                 flangethickness: float, webpos: float, webthickness: float):
+        super().__init__(parent, material)
+        self.midpos = midpos
+        self.flangewidth = flangewidth
+        self.flangethickness = flangethickness
+        self.webpos = webpos
+        self.webthickness = webthickness
+        self.interior = None
+
+        self._update_geometry(parent.interior)
+
+    def _update_geometry(self, exterior):
+        self.interior = exterior
+        start = self.midpos - self.flangewidth/2
+        end = self.midpos + self.flangewidth/2
+        cutbox = geom.box(start, exterior.bounds[1]-3,
+                          end, exterior.bounds[3]+3)
+
+        cutgeom = cutbox.intersection(exterior)
+
+        offsetside = self._get_inside_direction(exterior)
+
+        flangegeoms = []
+        offsetlines = []
+
+        for cutline in cutgeom.geoms:
+            flangegeoms.append(
+                self._create_offset_box(cutline, self.flangethickness,
+                                        offsetside)
+            )
+            offsetline = cutline.parallel_offset(self.flangethickness,
+                                                 side=offsetside)
+            offsetlines.append(offsetline)
+
+        webpos = start + self.webpos * self.flangewidth
+
+        line1 = offsetlines[0]
+        line2 = offsetlines[1]
+        xdist1 = abs(line1.coords[0][0]-line2.coords[-1][0])
+        xdist2 = abs(line1.coords[0][0]-line2.coords[0][0])
+
+        if xdist1 < xdist2:
+            webbox = geom.LinearRing([*line2.coords, *line1.coords])
+        else:
+            webbox = geom.LinearRing([*line1.coords[::-1], *line2.coords])
+
+        webstart = webpos - self.webthickness/2
+        webend = webpos + self.webthickness/2
+
+        webcutbox = geom.box(webstart, exterior.bounds[1]-3,
+                             webend,  exterior.bounds[1]+3)
+
+        web = webcutbox.intersection(geom.Polygon(webbox))
+
+        print(web)
+
+        self.geometry = geom.GeometryCollection([*flangegeoms, web])
+
+        self._cut_elements = [cutgeom]
+
+
 class BoxSpar(_AbstractBaseStructure):
-    def __init__(self, parent, material, midpos: float, width: float, flangeheigt, webwidth):
+    def __init__(self, parent, material, midpos: float, width: float,
+                 flangeheigt, webwidth):
         super().__init__(parent, material)
         self.midpos = midpos
         self.width = width
@@ -307,7 +378,7 @@ class BoxSpar(_AbstractBaseStructure):
 
         flange = flangebox-flangcutout
 
-        self.geometry = geom.GeometryCollection([*web.geoms, *flange.geoms])       
+        self.geometry = geom.GeometryCollection([*web.geoms, *flange.geoms])
 
         self._cut_elements = [abox]
 
@@ -324,7 +395,7 @@ class BoxSpar(_AbstractBaseStructure):
             cg = np.zeros(2)
 
             for ii, geom in enumerate(self.geometry.geoms):
-                if ii<2:
+                if ii < 2:
                     material = webmaterial
                 else:
                     material = flangematerial
@@ -346,15 +417,17 @@ def svgpolyline(pts, offset):
 
     return string.format(svgpts(pts, offset))
 
-def svgpts(pts, offset=(0,0)):
-    pts[:,1] *= -1
-    pts[:,1] -= offset[1]
-    pts[:,0] -= offset[0]
+
+def svgpts(pts, offset=(0, 0)):
+    pts[:, 1] *= -1
+    pts[:, 1] -= offset[1]
+    pts[:, 0] -= offset[0]
     
     return " ".join(("{},{}".format(*row) for row in pts))
 
+
 def otherside(side):
-    if side=='left':
+    if side == 'left':
         return 'right'
     else:
         return 'left'
