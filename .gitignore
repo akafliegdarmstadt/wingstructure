@@ -99,3 +99,4 @@ wingstructure_code.code-workspace
 .pytest_cache/v/cache/nodeids
 .vscode/tasks.json
 .pytest_cache/*
+.vscode/*

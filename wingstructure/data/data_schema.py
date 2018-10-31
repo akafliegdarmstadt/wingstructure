@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from strictyaml import load, Map, Str, Int, Float, Seq, FixedSeq,\
                         Any, Enum, Optional, OrValidator, YAMLError
 
@@ -8,7 +9,7 @@ vector = Map({
     Optional('z', default=0.0): Float()
 })
 
-zeros = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+zeros = OrderedDict({'x': 0.0, 'y': 0.0, 'z': 0.0})
 
 scaling = OrValidator(vector, Float())
 
@@ -17,12 +18,12 @@ scaling = OrValidator(vector, Float())
 
 wingsection = Map({
     'pos': vector,
-    Optional('twist', defautl=0.0): Float(),
+    Optional('twist', default=0.0): Float(),
     'chord': Float(),
     'airfoil': Str()
 })
 
-control_surfaces = Map({
+control_surface = Map({
     'name': Str(),
     'type': Enum(['aileron',
                   'flap',
@@ -39,11 +40,13 @@ wing = Map({
     Optional('rot', default=zeros): vector,
     Optional('scale', default=1.0): scaling,
     'sections': Seq(wingsection),
-    Optional('control-surfaces'): Seq(control_surfaces)
+    Optional('control-surfaces'): Seq(control_surface)
 })
 
 geometry = Map({'wing': wing,
                 'elevator': wing})
+
+# overall definition
 
 data = Map({'geometry': geometry})
 

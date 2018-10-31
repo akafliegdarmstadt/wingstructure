@@ -10,7 +10,8 @@ from sortedcontainers import SortedList
 import numpy as np
 
 # data type for 3D-Coordinates
-Point = namedtuple('Point','x y z')
+Point = namedtuple('Point', 'x y z')
+
 
 origin = Point(0, 0, 0)
 
@@ -20,9 +21,17 @@ class Airfoil(object):
     A storage class for Airfoil Coordinates
     """
     def __init__(self, coords: np.array):
+        """Creates Airfoil instance from coordinates
+
+        Parameters
+        ----------
+        coords : np.array
+            coordinates of airfoil (dat-file)
+        """
+
         self.coords = coords
-        self._n = np.argmin(np.abs(self.coords[:,0]))
-        
+        self._n = np.argmin(np.abs(self.coords[:, 0]))
+
     def interpolate(self, airfoil, beta):
         """
         Calculates interpolation with other airfoil
@@ -37,8 +46,9 @@ class Airfoil(object):
         base_lower2 = airfoil._get_lower()
         
         upper_coords = np.zeros(base_upper1.shape)
-        upper_coords[:,0] = base_upper1[:,0]
-        upper_coords[:,1] = np.interp(upper_coords[:,0], base_upper2[::-1,0], 
+        upper_coords[:, 0] = base_upper1[:, 0]
+        upper_coords[:, 1] = np.interp(upper_coords[:, 0], 
+                                       base_upper2[::-1, 0],
                                         base_upper2[::-1,1])*(1-beta) +(base_upper1[:,1])*beta
         
         lower_coords = np.zeros(base_lower1.shape)
@@ -89,7 +99,8 @@ class Section(object):
         return self.pos.y == other.pos.y
 
     def __repr__(self):
-        return 'sec: {{leading edge: {}, chord: {}}}'.format(self.pos, self.chord)
+        return 'sec: {{leading edge: {}, chord: {}}}'.format(self.pos,
+                                                             self.chord)
 
 
 class BaseWing(object):
@@ -97,7 +108,8 @@ class BaseWing(object):
     A basic wing class
     """
 
-    def __init__(self, pos=origin):
+    def __init__(self, position=origin, rotation=origin, scale=1.0,
+                 sections=[], control_surfaces=[]):
         self.sections = SortedList()
         self.pos = pos
         self.root_pos = 0.0
