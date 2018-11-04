@@ -124,7 +124,7 @@ is transcribed to the yaml-format:
                 chord: 0.377
                 airfoil: FX 60-126
             
-Die Position (*pos*) kann *x*, *y* und *z*-Koordinate enthalten. Nicht aufgeführte Werte werden automatisch zu 0 gesetzt.
+The position (*pos*) can contain *x*, *y* und *z*-coordinates. Not listet values are set to zero.
 
 Load data in Python
 -------------------

@@ -108,7 +108,7 @@ class BaseWing(object):
     A basic wing class
     """
 
-    def __init__(self, position=origin, rotation=origin, scale=1.0,
+    def __init__(self, pos=origin, rotation=origin, scale=1.0,
                  sections=[], control_surfaces=[]):
         self.sections = SortedList()
         self.pos = pos
