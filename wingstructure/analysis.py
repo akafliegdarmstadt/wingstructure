@@ -5,7 +5,7 @@ import numpy as np
 from scipy import interpolate
 
 from .airfoil import Airfoil
-from .geometry import Wing
+from .data.geometry import Wing
 from .liftingline import multhopp, calcgridpoints
 
 

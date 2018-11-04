@@ -96,3 +96,7 @@ wingstructure_code.code-workspace
 .idea/vcs.xml
 .idea/modules.xml
 .idea/misc.xml
+.pytest_cache/v/cache/nodeids
+.vscode/tasks.json
+.pytest_cache/*
+.vscode/*
