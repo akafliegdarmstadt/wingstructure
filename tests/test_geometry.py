@@ -1,3 +1,5 @@
+
+import numpy as np
 from wingstructure.data.geometry import Wing, Point
 import pytest
 

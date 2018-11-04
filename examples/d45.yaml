@@ -1,0 +1,63 @@
+# 
+aerodynamic:
+    C_Lmax: {neg: 1.088, neutral: 1.4, pos: 1.54} # Schätzwert
+    C_Lmin: {neg: -0.9, neutral: -0.8, pos: -0.5} # Schätzwert
+    C_D: 0.01228 # minimaler Gesamtwiderstand (Schätzung Ailmaar)
+    C_M0: 0.01
+geometry:
+    wing:
+        pos: [0., 0., 0.]
+        mass:
+            value: 123.79 # kg aus Massenschätzung
+            cg: [0.3, 0., 0.]
+        sections: # basiert auf Masterarbeit J. Bös
+        # Berechnung von posx: pos_xi=c_0(y)*83/100-c_i(y)*83/100 
+        - pos: [0., 0., 0.]
+          chord: 0.632
+          airfoil: 'D45-128/17'
+        - pos: [0.04731, 3.0, 0.]
+          chord: 0.575
+          airfoil: 'D45-128/17'
+        - pos: [0.13446, 5.25, 0.]
+          chord: 0.47
+          airfoil: 'D45-128/17V2'
+        - pos: [0.23821, 6.5, 0.]
+          chord: 0.345
+          airfoil: 'D45-126/17'
+        - pos: [0.32951, 7.15, 0.]
+          chord: 0.235
+          airfoil: 'D45-126/17V2'
+        - pos: [0.40006, 7.5, 0.]
+          chord: 0.15
+          airfoil: 'D45-125/17'
+        flaps:
+            QR:
+                span-start: 0.5 # Schätzung d. Rumpfbreite + x
+                span-end: 7.4
+                depth: 0.17
+        airbrake: # copypaste 43 - überarbeit
+            span-start: 2.4 #m
+            span-end: 3.83 #m
+            height: 0.2 #m
+            c_w: 2.0 # entsprechend unendlich Breiter Platte
+    fuselage: 
+        mass:
+            value: 82.33 #kg aus Massenschätzung
+            cg: [-0.6, 0., 0.] # Random
+        hooks:
+            aero-towing: [-2., 0., 0.]
+            winch-launch: [-1.2, 0., -0.3]
+    elevator: # copypaste 43 muss noch angepasst werden
+        pos: [6.0, 0.0, 1.2]
+        sections:
+        - pos: [0.0, 0.0, 0.0]
+          chord: 0.585
+          airfoil: 'kp'
+        - pos: [0.0, 1.55, 0.0]
+          chord: 0.26
+          airfoil: 'kp'
+masses:
+    max: 450 # kg
+    pilot:
+        value: [70.0, 205.0]
+        cg: [-1.2, 0.0, -0.5]  
