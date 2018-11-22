@@ -21,7 +21,8 @@ Furthermore we need some materials defined:
 
 .. code-block:: python
 
-   Material = col.namedtuple('Material', ['ρ'])
+   import collections
+   Material = collections.namedtuple('Material', ['ρ'])
 
    carbonfabric = Material(1.225)
    foam = Material(1.225)
