@@ -2,22 +2,31 @@
 Structure Definition
 ====================
 
-This document descibes methods for mass estimation of the wing structure. As a first step airfoil coordinates 
-are loaded and scaled. As first step numpy and the wingstructure.structure module are imported:
+This document descibes methods for mass estimation of the wing structure. As first step numpy and the wingstructure.structure module are imported:
 
 .. code-block:: python
 
    import numpy as np
    from wingstructure import structure
 
-With the coordinates a *SectionBase* instance is created:
+With the modules loaded airfoil coordinates 
+are loaded and scaled. Afterwards a *SectionBase* instance is created:
 
 .. code-block:: python
 
    coords = np.loadtxt('ah93157.dat', skiprows=1) * 1.2
    sectionbase = structure.SectionBase(coords)
 
-Starting from this object the structure will be generated beginning with the outside surface. Elements that can be
+Furthermore we need some materials defined:
+
+.. code-block:: python
+
+   Material = col.namedtuple('Material', ['ρ'])
+
+   carbonfabric = Material(1.225)
+   foam = Material(1.225)
+
+Starting from the *SectionBase* object the structure will be generated beginning with the outside surface. Elements that can be
 added are *Layer*, *Reinforcement*, *BoxSpar* and *ISpar*. A *Layer* covers the full surface and the only parameters
 are material and thickness. In the following a sandwich shell is defined:
 
