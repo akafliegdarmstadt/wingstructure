@@ -26,6 +26,7 @@ Furthermore we need some materials defined:
 
    carbonfabric = Material(1.225)
    foam = Material(1.225)
+   sandwich = Material(1.225)
 
 Starting from the *SectionBase* object the structure will be generated beginning with the outside surface. Elements that can be
 added are *Layer*, *Reinforcement*, *BoxSpar* and *ISpar*. A *Layer* covers the full surface and the only parameters
