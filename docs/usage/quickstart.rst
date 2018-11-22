@@ -12,50 +12,9 @@ For the definition of data the *yaml* format is used. A data format designed to 
 similiar to *python*. For simplicity and clarity reasons we restrict ourselves 
 to a subset called `strictyaml <https://hitchdev.com/strictyaml/>`_. 
 
-Basic Yaml
-----------
-
-In *yaml* there are two concepts to structure data
-
- * maps
- * sequences
-
-A *map* is *yaml*'s equivalent to a *python* *dictionary*:
-
-.. code-block:: yaml
-
-   a: 1.0
-   b: text
-
-The *sequences* are comparable to *python* *lists* or *tuples* and are marked with leading hyphens:
-
-.. code-block:: yaml
-
-   - item1
-   - item2
-   - 10.0
-
-This structures can be abitrary nested. To indicate nesting indentation is used (spaces, no tabs):
-
-.. code-block:: yaml
-
-    a:
-      - item1a
-      - item2a
-    b:
-      - 5
-      - 2.0
-      - text
-      - c: 2.0
-        d: 3.0
-        e: text2
-
-Example Definition
-^^^^^^^^^^^^^^^^^^
-
 The input yaml file for wingstructure contains a map as root structure. This root map
 can have the keys *geometry*, *aerodynamic*, *configurations* and *mass*. Values for those
-keys are described in the following. The data used is taken from the `D-38 <https://www.akaflieg.tu-darmstadt.de>`_ sailplane.
+keys are described in the following. The data used is taken from the `D-38 <https://www.akaflieg.tu-darmstadt.de/d-38>`_ sailplane.
 We will start with the geometry defintion:
 
 Geometry Definition
@@ -117,20 +76,54 @@ is transcribed to the yaml-format:
               - pos:
                     y: 4.5
                 chord: 0.754
+                twist: -1.13
                 airfoil: FX 61-184
               - pos:
                     x: 0.134
                     y: 7.5
                 chord: 0.377
+                twist: -3.86
                 airfoil: FX 60-126
             
 The position (*pos*) can contain *x*, *y* und *z*-coordinates. Not listet values are set to zero.
 
-Load data in Python
--------------------
+Aerodynamic Data
+""""""""""""""""
+The next section treated is *aerodynamic*. Its content descibes the overall aerodynamic characteristics
+of the sailplane and aerodynamic characteristics of the airfoils can be defined.
 
-Object Orientet Interfaces
---------------------------
+.. code-block:: yaml
+
+   aerodynamic:
+      c_dmin: 0.002
+      airfoils:
+        - name: 'FX 60-126'
+          α_0: -0.15
+          c_m0: 0.025
+        - name: 'FX 61-184'
+          α_0: -0.004
+          c_m0: 0.25
+
+Here a minimal drag for the whole airplane and characteristics for the two airfoils used are defined.
+The airfoil characteristics include a zero lift angle of attack (α_0) and the constant moment coefficient
+(cm_0) with regarding to the c/4-line.
+
+.. tip::
+
+   Additional information on input data definition can be found in :doc:`inputdata`.
+
+Load Input Data
+===============
+
+You can use the standard *yaml* module to load the data. *wingstructure* has a specific function 
+for that, which also validates the imported input data.
+
+.. code-block:: python
+
+   import wingstructure.data as wsdata
+
+   inputdata = wsdata.loaddata('inputdata.yaml')
+
 
 
 Aerodynamic analysis

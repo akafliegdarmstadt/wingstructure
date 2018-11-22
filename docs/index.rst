@@ -11,6 +11,10 @@ Welcome to wingstructure's documentation!
    :caption: Contents:
 
    usage/quickstart
+   usage/inputdata
+   usage/structure
+
+   reference/modules
 
 Indices and tables
 ==================

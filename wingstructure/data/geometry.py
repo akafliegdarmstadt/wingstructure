@@ -74,10 +74,10 @@ class Section(object):
     """
     A storage class for wing sections
     """
-    def __init__(self, pos: Point, chord: float, alpha: float = 0.0, airfoil: str = ''):
+    def __init__(self, pos: Point, chord: float, twist: float = 0.0, airfoil: str = ''):
         self.pos = pos
         self.chord = chord
-        self.alpha = alpha
+        self.twist = twist
         self.airfoil = airfoil
 
     @property
@@ -108,27 +108,37 @@ class BaseWing(object):
     A basic wing class
     """
 
-    def __init__(self, pos=origin, rotation=origin, scale=1.0,
+    def __init__(self, pos=origin, rot=origin, scale=1.0,
                  sections=[], control_surfaces=[]):
         self.sections = SortedList()
         self.pos = pos
+        self.rot = rot
         self.root_pos = 0.0
 
     @classmethod
     def create_from_dict(cls, adict):
 
-        pos = Point(*adict['pos'])
+        pos = Point(**adict['pos'])
+        rot = Point(**adict['rot'])
 
-        wing = cls(pos)
+        sections = cls._generate_sections(adict)
 
-        for section in adict['sections']:
-            section['pos'] = Point(*section['pos'])
-
-            section = Section(**section)
-
-            wing._add_section(section)
+        wing = cls(pos=pos, rot=rot, sections=sections)
 
         return wing
+    
+    @classmethod
+    def _generate_sections(cls, adict: dict):
+        
+        sections = []
+
+        for sectiondict in adict['sections']:
+            sectiondict['pos'] = Point(**sectiondict['pos'])
+            sectiondict['twist'] = np.deg2rad(sectiondict['twist'])
+            sections.append(Section(**sectiondict))
+
+        return sections
+           
 
     @classmethod
     def create_from_planform(cls, span_positions: list, chord_lengths: list, offsets: list, twists: list, airfoils: list):
@@ -147,9 +157,9 @@ class BaseWing(object):
 
         return wing1
 
-    def add_section(self, pos: Point, chord: float, alpha:float=0., airfoil:str=''):
+    def add_section(self, pos: Point, chord: float, twist:float=0., airfoil:str=''):
 
-        tmpsec = Section(pos, chord, alpha, airfoil)
+        tmpsec = Section(pos, chord, twist, airfoil)
 
         self._add_section(tmpsec)
 
@@ -162,7 +172,7 @@ class BaseWing(object):
 
     @property
     def area(self) -> float:
-        """Calculate area of the wing."""
+        """calculate wing area"""
 
         span_positions = [section.pos.y for section in self.sections]
         chord_lengths = [section.chord for section in self.sections]
@@ -276,8 +286,8 @@ class BaseWing(object):
         return np.array([section.chord for section in self.sections])
 
     @property
-    def alphas(self):
-        return np.array([section.alpha for section in self.sections])
+    def twists(self):
+        return np.array([section.twist for section in self.sections])
 
     @property
     def airfoils(self):
@@ -298,11 +308,11 @@ class Flap(object):
         """
         self.y_start = span_start
         self.y_end = span_end
-        self.depth_start = depth[0]
-        self.depth_end = depth[1]
+        self.chord_start = depth[0]
+        self.chord_end = depth[1]
         
-    def depth_at(self, span_pos):
-        return np.interp(span_pos, [self.y_start, self.y_end], [self.depth_start, self.depth_end],
+    def chordpos_at(self, span_pos):
+        return np.interp(span_pos, [self.y_start, self.y_end], [self.chord_start, self.chord_end],
                          right=0.0, left=0.0)
 
     def __lt__(self, other) -> bool:
@@ -316,32 +326,31 @@ class Wing(BaseWing):
     """
     A storage class for Wing with airbrake and flaps.
     """
-    def __init__(self, pos:Point=origin):
-        super(Wing, self).__init__(pos)
+    def __init__(self, pos:Point=origin, rot:Point=origin):
+        super(Wing, self).__init__(pos, rot)
         self.flaps = dict()
         self.airbrake = None
 
     @classmethod
     def create_from_dict(cls, adict):
 
-        # create temporary BaseWing
-        wing_ = super().create_from_dict(adict)
-
         # create Wing instance
-        wing = cls()
+        wing = cls(pos=Point(**adict['pos']),
+                   rot=Point(**adict['rot']))
 
-        # copy data from BaseWing instance
-        wing.sections = wing_.sections
-        wing.pos = wing_.pos
+        # generate sections
+        wing.sections = cls._generate_sections(adict)
 
-        # add flaps
-        if 'flaps' in adict.keys() and isinstance(adict['flaps'], dict):
-            for name, data in adict['flaps'].items():
-                wing.set_flap(name, data['span-start'], data['span-end'], data['depth'])
-
-        # add air brake
-        if 'airbrake' in adict.keys() and isinstance(adict['airbrake'], dict):
-            wing.set_airbrake(adict['airbrake']['span-start'], adict['airbrake']['span-end'])
+        # add control surfaces
+        if 'control-surfaces' in adict.keys() and isinstance(adict['control-surfaces'], list):
+            for data in adict['control-surfaces']:
+                if data['type'] == 'spoiler':
+                    wing.set_airbrake(data['span-start'], data['span-end'])
+                elif data['type'] in ('aileron', 'flap', 'flaperon'):
+                    wing.set_flap(data['name'], data['span-start'], 
+                                  data['span-end'], data['chord-pos'])
+                else:
+                    raise Exception('not recognized control-surface type: {}'.format(data['type']))
 
         return wing
 
@@ -412,7 +421,7 @@ class Wing(BaseWing):
             chords = np.interp(y_pos, y_positions, chord_lengths)
             offsets = np.interp(y_pos, y_positions, x_positions)
             te = -(chords+offsets)
-            depth = aflap.depth_at(y_pos)*chords
+            depth = (1-aflap.chordpos_at(y_pos))*chords
             
             plt.plot(y_pos[[0,*range(len(y_pos)),-1]], [te[0],*(te+depth),te[-1]], 'g--')
 

@@ -43,7 +43,7 @@ class LiftAnalysis(object):
         # calculate distributions
 
         ## base distribution
-        αs_base = np.interp(np.abs(self.calc_ys), wing.ys, wing.alphas)
+        αs_base = np.interp(np.abs(self.calc_ys), wing.ys, wing.twists)
         self.base_liftdist, self.base_lift, self.base_drag = multhopp_(αs_base)
 
         ## flap distributions
@@ -73,9 +73,9 @@ class LiftAnalysis(object):
             
         for ii, span_pos in enumerate(self.calc_ys):
             
-            if flap.depth_at(span_pos) > 0 and span_pos > 0:
+            if flap.chordpos_at(span_pos) < 1.0 and span_pos > 0:
                 
-                lambda_k = flap.depth_at(span_pos)
+                lambda_k = 1-flap.chordpos_at(span_pos)
                 
                 eta_k = angle
                 

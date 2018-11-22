@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from strictyaml import load, Map, Str, Int, Float, Seq, FixedSeq,\
-                        Any, Enum, Optional, OrValidator, YAMLError
+                        Any, Enum, Optional, OrValidator, YAMLError,\
+                        representation
 
 # helper definitions
 vector = Map({
@@ -46,7 +47,7 @@ wing = Map({
 })
 
 geometry = Map({'wing': wing,
-                'elevator': wing})
+                Optional('elevator'): wing})
 
 # overall definition
 
@@ -72,7 +73,20 @@ def loaddata(filename: str):
     
     loaded = load(yamlstr, data)
     
-    return loaded
+    return clear(loaded)
+
+
+def clear(data):
+    '''helper function removing metadata'''
+
+    if type(data) == representation.YAML:
+        return clear(data.data)
+    elif type(data) == OrderedDict:
+        return {key: clear(value) for key, value in data.items()}
+    elif type(data) == list:
+        return [clear(item) for item in data]
+    else:
+        return data
 
 
 if __name__ == '__main__':
