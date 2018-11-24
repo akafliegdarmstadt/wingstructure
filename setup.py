@@ -8,7 +8,7 @@ setup(name='wingstructure',
     author='helo',
     author_email='-',
     license='GPL 2.0',
-    packages=find_packages('wingstructure'),
+    packages=find_packages('.'),
     install_requires= [
         'numpy',
         'sortedcontainers',
