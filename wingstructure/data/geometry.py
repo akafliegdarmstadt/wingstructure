@@ -33,11 +33,19 @@ class Airfoil(object):
         self._n = np.argmin(np.abs(self.coords[:, 0]))
 
     def interpolate(self, airfoil, beta):
-        """
-        Calculates interpolation with other airfoil
-        :param airfoil: another airfoil object
-        :param beta: interpolation weighting factor
-        :return: interpolated airfoil (object)
+        """interpolation with other airfoil
+
+        Parameters
+        ----------
+        airfoil: Airfoil
+            another airfoil
+        beta: float
+            interpolation weighting factor
+
+        Returns
+        -------
+        Airfoil
+            interpolated airfoil
         """
         base_upper1 = self._get_upper()
         base_lower1 = self._get_lower()
@@ -65,6 +73,14 @@ class Airfoil(object):
         return self.coords[self._n:, :]
     
     def plot(self, *args):
+        """show airfoil with matplotlib
+
+        Parameters:
+        args
+            Arguments passed to matplotlib.pyplot.plot function
+        """
+
+
         from matplotlib import pyplot as plt
         
         plt.plot(self.coords[:,0], self.coords[:,1], *args)
@@ -75,6 +91,21 @@ class Section(object):
     A storage class for wing sections
     """
     def __init__(self, pos: Point, chord: float, twist: float = 0.0, airfoil: str = ''):
+        """section class constructor
+        
+        Parameters
+        ----------
+        pos : Point
+            leading edge position
+        chord : float
+            chord length
+        twist : float, optional
+            rotation angle around pos (the default is 0.0, which means no rotation)
+        airfoil : str, optional
+            name of airfoil's section (the default is '', which indicates no airfoil specified)
+        
+        """
+
         self.pos = pos
         self.chord = chord
         self.twist = twist
@@ -103,10 +134,7 @@ class Section(object):
                                                              self.chord)
 
 
-class BaseWing(object):
-    """
-    A basic wing class
-    """
+class _BaseWing(object):
 
     def __init__(self, pos=origin, rot=origin, scale=1.0,
                  sections=[], control_surfaces=[]):
@@ -116,7 +144,9 @@ class BaseWing(object):
         self.root_pos = 0.0
 
     @classmethod
-    def create_from_dict(cls, adict):
+    def create_from_dict(cls, adict)->BaseWing:
+        """build BaseWing from dictionary definition
+        """
 
         pos = Point(**adict['pos'])
         rot = Point(**adict['rot'])
@@ -128,8 +158,20 @@ class BaseWing(object):
         return wing
     
     @classmethod
-    def _generate_sections(cls, adict: dict):
+    def _generate_sections(cls, adict: dict)->list:
+        """build section list from dictionary
         
+        Parameters
+        ----------
+        adict : dict
+            dictionary containing wing definition
+        
+        Returns
+        -------
+        list
+            list of sections
+        """
+
         sections = []
 
         for sectiondict in adict['sections']:
@@ -138,24 +180,6 @@ class BaseWing(object):
             sections.append(Section(**sectiondict))
 
         return sections
-           
-
-    @classmethod
-    def create_from_planform(cls, span_positions: list, chord_lengths: list, offsets: list, twists: list, airfoils: list):
-        """Generates a Wing object faster than through adding sections manually"""
-
-        pos1 = Point(0, 0, 0)
-        wing1 = cls(pos1)
-
-        data = zip(span_positions, chord_lengths, offsets, twists, airfoils)
-
-        for span_position, chord_length, offset, twist, airfoil in data:
-            pos = Point(offset, span_position, 0)
-            section = Section(pos, chord_length, twist, airfoil)
-
-            wing1._add_section(section)
-
-        return wing1
 
     def add_section(self, pos: Point, chord: float, twist:float=0., airfoil:str=''):
 
@@ -163,16 +187,31 @@ class BaseWing(object):
 
         self._add_section(tmpsec)
 
-    def _add_section(self, section: Section) -> None:
+    def _add_section(self, section: Section):
 
         self.sections.add(section)
 
-    def set_root_pos(self, span_position: float) -> None:
+    def set_root_pos(self, span_position: float):
+        """Define span position of wing root
+        
+        Parameters
+        ----------
+        span_position : float
+            wing root span position
+        
+        """
+
         self.root_pos = span_position
 
     @property
     def area(self) -> float:
-        """calculate wing area"""
+        """calculate wing area
+        
+        Returns
+        -------
+        float
+            wing area
+        """
 
         span_positions = [section.pos.y for section in self.sections]
         chord_lengths = [section.chord for section in self.sections]
@@ -183,11 +222,25 @@ class BaseWing(object):
 
     @property
     def aspect_ratio(self) -> float:
+        """calculate aspect ratio
+        
+        Returns
+        -------
+        float
+            aspect ratio
+        """
+
         return self.span**2/self.area
 
     @property
     def mac(self) -> Section:
-        """Calculates the mean aerodynamic chord."""
+        """calculates mean aerodynamic chord.
+        
+        Returns
+        -------
+        Section
+            mean aerodynamic chord
+        """
 
         wingarea = 0.0
         mac = 0.0
@@ -278,40 +331,47 @@ class BaseWing(object):
             return {0: airfoil1, 1: airfoil2, 'beta':beta}
 
     @property
-    def ys(self):
+    def ys(self) -> np.array:
         return np.array([section.pos.y for section in self.sections])
     
     @property
-    def chords(self):
+    def chords(self) -> np.array:
         return np.array([section.chord for section in self.sections])
 
     @property
-    def twists(self):
+    def twists(self) -> np.array:
         return np.array([section.twist for section in self.sections])
 
     @property
-    def airfoils(self):
+    def airfoils(self) -> list:
         return [section.airfoil for section in self.sections]
 
 
 class Flap(object):
-    """
-    A storage class for flaps.
-    """
-    def __init__(self, span_start, span_end, depth):
-        """ Create a Flap object
+    """Data object for flap definition
 
-        Arguments
-        span_start -- span at which flap begins
-        span_end -- span at which flap ends
-        depth -- relative depth at span_start and _end as list
-        """
+    Instances of the class store the span position (start and end) and 
+    the chord position of a control surface. The chord position is defined
+    relative to the chord length (0.0-1.0) and can either be constant
+    or linear. 
+
+    Examples
+    --------
+    >>> constantflap = ws.Flap(4.5, 6.5, 0.8)
+    >>> linearflap = ws.Flap(4.5, 6.5, [0.8, 0.75])
+    """
+    def __init__(self, span_start, span_end, chord):
+        if np.isscalar(chord):
+            chord = np.ones(2,1) * chord
         self.y_start = span_start
         self.y_end = span_end
         self.chord_start = depth[0]
         self.chord_end = depth[1]
         
-    def chordpos_at(self, span_pos):
+    def chordpos_at(self, span_pos: float):
+        """interpolate chord position
+        """
+
         return np.interp(span_pos, [self.y_start, self.y_end], [self.chord_start, self.chord_end],
                          right=0.0, left=0.0)
 
@@ -322,9 +382,12 @@ class Flap(object):
         return self.y_start == other.y_start
 
 
-class Wing(BaseWing):
-    """
-    A storage class for Wing with airbrake and flaps.
+class Wing(_BaseWing):
+    """Storage class for Wing definition
+
+    Instances of the Wing class can be used to store geometry
+    information for wing elements. Many useful functions are available
+    as well through it's objects. 
     """
     def __init__(self, pos:Point=origin, rot:Point=origin):
         super(Wing, self).__init__(pos, rot)
