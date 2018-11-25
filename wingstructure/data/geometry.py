@@ -365,8 +365,8 @@ class Flap(object):
             chord = np.ones(2,1) * chord
         self.y_start = span_start
         self.y_end = span_end
-        self.chord_start = depth[0]
-        self.chord_end = depth[1]
+        self.chord_start = chord[0]
+        self.chord_end = chord[1]
         
     def chordpos_at(self, span_pos: float):
         """interpolate chord position
