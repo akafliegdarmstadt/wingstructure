@@ -2,13 +2,13 @@ import sys, os
 from setuptools import setup, find_packages
 
 setup(name='wingstructure',
-    version='0.0.1',
+    version='0.0.2',
     description='',
     url='None',
     author='helo',
     author_email='-',
     license='GPL 2.0',
-    packages=['wingstructure'],
+    packages=find_packages('.'),
     install_requires= [
         'numpy',
         'sortedcontainers',
