@@ -11,9 +11,12 @@ setup(name='wingstructure',
     packages=find_packages('.'),
     install_requires= [
         'numpy',
+        'scipy',
         'sortedcontainers',
         'matplotlib',
-        'pytest'
+        'pytest',
+        'strictyaml',
+        'shapely'
     ],
     zip_safe=False
     )
