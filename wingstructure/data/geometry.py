@@ -144,8 +144,8 @@ class _BaseWing(object):
         self.root_pos = 0.0
 
     @classmethod
-    def create_from_dict(cls, adict)->BaseWing:
-        """build BaseWing from dictionary definition
+    def create_from_dict(cls, adict):
+        """build _BaseWing from dictionary definition
         """
 
         pos = Point(**adict['pos'])

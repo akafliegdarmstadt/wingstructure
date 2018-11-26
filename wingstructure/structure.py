@@ -259,10 +259,16 @@ class ISpar(_AbstractBaseStructure):
         self.interior = exterior
         start = self.midpos - self.flangewidth/2
         end = self.midpos + self.flangewidth/2
+
+        if start<exterior.bounds[0] or end > exterior.bounds[2]:
+            raise Exception('flange width is too large')
+
         cutbox = shpl_geom.box(start, exterior.bounds[1]-3,
                                end, exterior.bounds[3]+3)
 
         cutgeom = cutbox.intersection(exterior)
+
+        self.tmp = cutgeom
 
         offsetside = self._get_inside_direction(exterior)
 
