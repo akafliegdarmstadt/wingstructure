@@ -12,7 +12,6 @@ Welcome to wingstructure's documentation!
 
    usage/quickstart
    usage/inputdata
-   usage/structure
 
    reference/modules
 

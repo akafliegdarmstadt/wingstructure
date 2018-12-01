@@ -1,3 +1,48 @@
+"""Module for representation of wing's structure
+
+This module defines classes which allow definition of a wing section as chain of multiple structure elements.
+Definition of a structure starts with SectionBase, which stores airfoil coordinates. Beginning with this exterior
+geometry structure elements can be added from out to inside. Possible Elements are Layers, covering the whole
+surface, Reinforcements for higher stiffness locally and Spar elements (ISpar and BoxSpar).
+
+Example
+-------
+.. code-block:: python
+
+   import numpy as np
+   from wingstructure import structure
+
+   # Load cooardinates
+   coords = np.loadtxt('ah93157.dat', skiprows=1) * 1.2
+   sectionbase = structure.SectionBase(coords)
+
+   # Define Material
+   import collections
+   Material = collections.namedtuple('Material', ['ρ'])
+
+   carbonfabric = Material(1.225)
+   foam = Material(1.225)
+   sandwich = Material(1.225)
+
+   # Add layers
+   outerlayer = structure.Layer(sectionbase, carbonfabric, 5e-4)
+   core = structure.Layer(outerlayer, foam, 1e-2)
+   innerlayer = structure.Layer(core, carbonfabric, 5e-4)
+
+   # Add Spar
+   spar = structure.ISpar(parent=innerlayer, 
+                          material={'flange': carbonfabric, 'web': sandwich},
+                          midpos=0.45,
+                          flangewidth=0.2,
+                          flangethickness=0.03,
+                          webpos=0.5,
+                          webthickness=0.02)
+
+   # Analyse Mass
+   massana = structure.MassAnalysis(spar)
+   cg, mass = massana.massproperties()
+"""
+
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -76,7 +121,7 @@ class _AbstractBaseStructure(_AbstractBase):
         offsetline = line.parallel_offset(thickness, side=side)
         
         if symmetric:
-            offsetline2 = line.parallel_offset(thickness, side=otherside(side))
+            offsetline2 = line.parallel_offset(thickness, side=_oderside(side))
             line = offsetline2
 
         if bevel > 0.0:
@@ -114,25 +159,53 @@ class _AbstractBaseStructure(_AbstractBase):
 
 
 class SectionBase(_AbstractBase):
+    """Foundation for section's wing structure description
+    
+    Parameters
+    ----------
+    airfoil_coordinates : np.ndarray
+        airfoils coordinates from dat file
+    
+    Attributes
+    ----------
+    interior: shapely.geometry.LinearRing
+        representation of airfoil as shapely geometry
+    """
+
     def __init__(self, airfoil_coordinates):
         super().__init__()
-        self.geometry = shpl_geom.LinearRing(airfoil_coordinates)
+        self._geometry = shpl_geom.LinearRing(airfoil_coordinates)
 
     @property
     def interior(self):
-        return self.geometry
+        return self._geometry
     
-    def massproperties(self):
-        return self.children[0]._sum_massproperties()
-
     def _repr_svg_(self):
-        return self.geometry._repr_svg_()
+        return self._geometry._repr_svg_()
 
 
 class Layer(_AbstractBaseStructure):
+    """Layer of constant thickness representation
+    
+    Parameters
+    ----------
+    parent : 
+        Structure Element
+    material :
+        Material definition
+    thickness : float
+        The Layers geometric thickness
+
+    Attributes
+    ----------
+    interior :
+        shapely geometry representation of interior
+    
+    """
+
     def __init__(self, parent, material, thickness=0.0):
         super().__init__(parent, material)
-        self.thickness = thickness
+        self._thickness = thickness
 
         self.interior = None
 
@@ -142,7 +215,7 @@ class Layer(_AbstractBaseStructure):
         
         inside_direction = self._get_inside_direction(exterior)
 
-        self.interior = exterior.parallel_offset(self.thickness,
+        self.interior = exterior.parallel_offset(self._thickness,
                                                  side=inside_direction)
 
         if self.interior.type == 'MultiLineString':
@@ -154,18 +227,38 @@ class Layer(_AbstractBaseStructure):
 
 
 class Reinforcement(Layer):
+    """Local reinforcement structure
+    
+    Parameters
+    ----------
+    parent :
+        Parent structure Element
+    material :
+        Material Defintion
+    thickness :
+        reinforcement thickness
+    limits :
+        bounds for reinforcement in chordwise direction
+
+    Attributes
+    ----------
+    interior :
+        shapely geometry representation of interior
+
+    """
+
     def __init__(self, parent, material, thickness=0.0, limits=None):
         _AbstractBaseStructure.__init__(self, parent, material)  #TODO fix
-        self.thickness = thickness
-        self.limits = limits
+        self._thickness = thickness
+        self._limits = limits
 
         self.interior = None
 
         self._update_geometry(parent.interior)
     
     def _update_geometry(self, exterior):
-        limited_box = shpl_geom.box(self.limits[0], exterior.bounds[1]*1.1,
-                                    self.limits[1], exterior.bounds[3]*1.1)
+        limited_box = shpl_geom.box(self._limits[0], exterior.bounds[1]*1.1,
+                                    self._limits[1], exterior.bounds[3]*1.1)
 
         intersection = limited_box.intersection(exterior)
 
@@ -176,7 +269,7 @@ class Reinforcement(Layer):
         tmp_interior = shpl_geom.Polygon(exterior)
 
         for ageo in intersection.geoms:
-            tmp_geometry = self._create_offset_box(ageo, self.thickness, side, 
+            tmp_geometry = self._create_offset_box(ageo, self._thickness, side, 
                                                    symmetric=False)
             tmp_interior -= tmp_geometry
             tmp_geometries.append(tmp_geometry)
@@ -243,6 +336,38 @@ class Display(object):
 
 
 class ISpar(_AbstractBaseStructure):
+    """Representation for I or double-T Spar
+    
+    Parameters
+    ----------
+    parent :
+        Parent structure element.
+    material :
+        Material defintion.
+    midpos : float
+        Chord position of spar (absolute)
+    flangewidth : float
+        width of flanges
+    flangethickness : float
+        thickness of flanges (symmetric)
+    webpos : float
+        position of web at flange (relative, 0 - left, 1 - right)
+    webthickness : float
+        thickness of web
+
+
+    Attributes
+    ----------shapely geometry representation of interior
+    interior : 
+        shapely geometry representation of interior
+    
+    Raises
+    ------
+    Exception
+        when geometry cannot be created with choosen parameters
+
+    """
+
     def __init__(self, parent, material, midpos: float, flangewidth: float,
                  flangethickness: float, webpos: float, webthickness: float):
         super().__init__(parent, material)
@@ -339,6 +464,31 @@ class ISpar(_AbstractBaseStructure):
 
 
 class BoxSpar(_AbstractBaseStructure):
+    """Representation for box spar
+    
+    Parameters
+    ----------
+    parent :
+        Parent structure element.
+    material :
+        Material defintion.
+    midpos : float
+        Chord position of spar (absolute)
+    width : float
+        width of spar
+    flangeheight : float
+        thickness of flanges (symmetric)
+    webwidth : float
+        thickness of web
+
+
+    Attributes
+    ----------
+    interior : 
+        shapely geometry representation of interior
+
+    """
+
     def __init__(self, parent, material, midpos: float, width: float,
                  flangeheigt, webwidth):
         super().__init__(parent, material)
@@ -412,9 +562,19 @@ class BoxSpar(_AbstractBaseStructure):
 
 
 class MassAnalysis:
+    """Analyse Mass of Structure
+    
+    Parameters
+    ----------
+    parent
+        last element of structure elment chain to be analysed
+    
+    """
+
     def __init__(self, parent):
         self.parent = parent
 
+    @property
     def massproperties(self):
         mass = 0.0
         cg = np.zeros(2)
@@ -432,7 +592,7 @@ class MassAnalysis:
         return shpl_geom.Point(cg/mass), mass
         
 
-def otherside(side):
+def _oderside(side):
     if side == 'left':
         return 'right'
     else:
