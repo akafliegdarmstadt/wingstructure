@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-A module providing multhop method for solving lifting line problem
+Module providing the multhop quadrature method for solving prandtl's lifting line problem.
 """
 import numpy as np
 from numba import jit
@@ -16,14 +16,7 @@ _ext_multhopp_result = namedtuple('ext_multhopp_result', ('ys', 'c_ls', 'C_L', '
 
 #@jit
 def _solve_multhopp(αs, θs, chords, b, dcls, return_B = False):
-    """Calculates lift distribution with multhopp method.
-    
-    :param αs: angle of attack in radians at grid points
-    :param θs: gridpoints in transformed spanwise coordinates y=b/2 cos(θ)
-    :param chords: chord lenghtes at grid points
-    :param dcls: lift slope of wing sections at grid points
-    :rtype: dict
-    """
+
     M = len(θs)
 
     # create empyt matrix (N_MxN_M) for multhoppcoefficients
@@ -58,16 +51,21 @@ def _solve_multhopp(αs, θs, chords, b, dcls, return_B = False):
         return γs
 
 def _calculate_liftcoefficients(Θs, γs, chords, Λ, b, M):
-    """calculates lift coefficients from circulation
+    """Calculates lift coefficients from circulation
     
-    Args:
-        ...
-        chords (ndarray): chord lenghtes
-        b (float): span width
-        M (int): number of grid points
-    
-    Returns:
-        c_l (ndarray), C_L (float): lift distribution and wing lift coefficients
+    Parameters
+    ----------
+    chords : np.ndarray
+        chord lengthes
+    b : float
+        span width
+    M : int
+        number of grid points
+
+    Returns
+    -------
+    tuple
+        c_l (ndarray) - local lift coefficents, C_L (float) - lift coefficient wing
     """
 
 
@@ -79,7 +77,8 @@ def _calculate_liftcoefficients(Θs, γs, chords, Λ, b, M):
 
     return c_l, C_L
 
-def calcgridpoints(ys: np.array, b:float, Λ:float, M:int = None):
+def _calcgridpoints(b:float, Λ:float, M:int = None):
+
     # calculate number of gridpoints
     if M is None:
         M = int(round(Λ)*4-1) # has to be uneven, not more than 4*aspect ratio
@@ -95,9 +94,32 @@ def calcgridpoints(ys: np.array, b:float, Λ:float, M:int = None):
     return θs, calc_ys
 
 def multhopp(αs: np.array, chords: np.array, ys: np.array, dcls: np.array=np.nan, M:int=None,
-             mode = 'c_l', interp = True, data=None ):
-
+             mode = 'c_l', interp = True ):
+    """Use multhopp's quadrature to solve prandtl's lifting line problem
     
+    Parameters
+    ----------
+    αs : np.array
+        angle of attack regarding zero lift angle
+    chords : np.array
+        chord lengths of wing
+    ys : np.array
+        corresponding span position
+    dcls : np.array, optional
+        lift coefficient slope (the default is np.nan, which means 2pi is used)
+    M : int, optional
+        number of evaluation points (the default is None, which let function use recommendation number)
+    mode : str, optional
+         (the default is 'c_l', which [default_description])
+    interp : bool, optional
+        calculate grid points or use given span positions for calculation (the default is True)
+    
+    Returns
+    -------
+    namedtuple
+        local lift coefficients, optional circulation distribution
+    """
+
     if np.isnan(dcls).all():
         dcls = np.array([2*π]*len(ys))
 
@@ -111,14 +133,18 @@ def multhopp(αs: np.array, chords: np.array, ys: np.array, dcls: np.array=np.na
         
         # calculate aspect ratio
         Λ = b**2 / S
-        θs, calc_ys = calcgridpoints(ys, b, Λ, M)
+        θs, calc_ys = _calcgridpoints(b, Λ, M)
         
         calc_αs = np.interp(np.abs(calc_ys), ys, αs)
         calc_chords = np.interp(np.abs(calc_ys), ys, chords)
         calc_dcls = np.interp(np.abs(calc_ys), ys, dcls)
     else:
-        b = data['b']
-        S = data['S']
+        # calculate wingspan
+        b = 2*max(ys)
+
+        # calculate wing area
+        S = 2 * np.trapz(y=chords, x=ys)
+
         Λ = b**2/S
 
         calc_ys = ys
@@ -127,8 +153,6 @@ def multhopp(αs: np.array, chords: np.array, ys: np.array, dcls: np.array=np.na
         calc_dcls = dcls
 
         θs = np.arccos(-2*calc_ys/b)
-
-        #print(θs)
 
     # calculate circulation distribution
     γs, Bb, Bd = _solve_multhopp(calc_αs, θs, calc_chords, b, calc_dcls, return_B=True)

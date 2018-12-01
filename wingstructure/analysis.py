@@ -4,27 +4,40 @@ from warnings import warn
 import numpy as np
 from scipy import interpolate
 
-from .airfoil import Airfoil
-from .data.geometry import Wing
-from .liftingline import multhopp, calcgridpoints
+from .data import geometry
+import liftingline as ll
+
+class AirfoilData(object):
+    def __init__(self, alpha0: float = 0, dif_ca_alpha: float = 2*np.pi, cm0: float = 0):
+        self.alpha0 = alpha0
+        self.dif_ca_alpha = dif_ca_alpha
+        self.cm0 = cm0
 
 
 class LiftAnalysis(object):
     """
     Class for simplified handling of Multhopp
+
+    Parameters
+    ----------
+    wing : geometry.Wing
+        Definition of wing to be analysed.
+    airfoil_db : dict
+        Database of airfoils used in wing.
+
+    Methods
+    -------
+
     """
-    def __init__(self, wing: Wing, airfoil_db: dict = None):
-        """
-        Initialize Analysis object, calculate distributions
-        """
+    def __init__(self, wing: geometry.Wing, airfoil_db: dict = None):
 
         # use default airfoil if no database is set
         if airfoil_db is None:
             warn('No airfoil database defined, using default airfoil.')
-            airfoil_db = defaultdict(Airfoil)
+            airfoil_db = defaultdict(AirfoilData)
 
         # calculate grid points
-        θs, self.calc_ys = calcgridpoints(wing.ys, wing.span, wing.aspect_ratio)
+        θs, self.calc_ys = ll._calcgridpoints(wing.ys, wing.span, wing.aspect_ratio)
 
         # number of gridpoints
         M = len(θs)
@@ -35,9 +48,8 @@ class LiftAnalysis(object):
 
         # shorter multhopp call
         def multhopp_(αs):
-            #print(self.calc_chords, self.calc_ys, calc_dcls)
-            res = multhopp(αs, self.calc_chords, self.calc_ys, calc_dcls, M=M,
-                                         mode='combined', interp=False, data={'b':wing.span, 'S':wing.area})
+            res = ll.multhopp(αs, self.calc_chords, self.calc_ys, calc_dcls, M=M,
+                              mode='combined', interp=False)
             return res.c_ls, res.C_L, res.C_Wi
 
         # calculate distributions
@@ -88,13 +100,6 @@ class LiftAnalysis(object):
         return alphas
 
     def _calculate(self, C_L: float, air_brake=False, flap_deflections={})->tuple:
-        """
-        Calculates lift distribution and resultant coefficients for defined flap settings and lift
-        :param c_l: demanded lift coefficient for whole wing
-        :param air_brake: enables or disables airbrake [True/False]
-        :param flap_deflections: dictionary containing flap deflections, e.g. {'flap1':[np.radians(5),np.radians(-5)]}
-        :return: (angle of attack, lift distribution)
-        """
 
         # create float variable for drag
         C_Di = self.base_drag
@@ -128,12 +133,23 @@ class LiftAnalysis(object):
         return C_L, self.aoa_c_ls * np.mean(C_L) + distribution, np.mean(C_Di) + self.aoa_C_Di*np.mean(C_L)
 
     def calculate(self, C_L: float, air_brake=False, flap_deflections={}, return_C_Di=False)->tuple:
-        """
-        Calculates the lift distribution for specific lift an defined flap settings
-        :param c_l: demanded lift coefficient for whole wing
-        :param air_brake: enables or disables airbrake [True/False]
-        :param flap_deflections: dictionary containing flap deflections, e.g. {'flap1':[np.radians(5),np.radians(-5)]}
-        :return: (angle of attack, lift distribution)
+        """Calculates lift distribution with defined control surface setting
+      
+        Parameters
+        ----------
+        C_L : float
+            wing lift coefficient
+        air_brake : bool, optional
+            Is air brake active (the default is False, which mean not active)
+        flap_deflections : dict, optional
+            deflections of control surfaces as dictionary {cs-name: (deflection-left, deflection-right)}
+        return_C_Di : bool, optional
+            Is induced drag also returned? (the default is False, which means it will not)
+        
+        Returns
+        -------
+        tuple
+            (angle of attack, local lift coefficients, [induced drag])
         """
 
         C_L_, c_ls, C_Di = self._calculate(C_L, air_brake, flap_deflections)
@@ -143,13 +159,23 @@ class LiftAnalysis(object):
         else:
             return self.aoa_α * np.mean(C_L_), c_ls, C_Di
 
-    def calculate_resultant(self, C_L, air_brake=False, flap_deflections={})->tuple:
-        """
-        Determines resulting lift coefficients for left and right wing half
-        :param c_l: demanded lift coefficient for whole wing
-        :param air_brake: enables or disables airbrake [True/False]
-        :param flap_deflections: dictionary containing flap deflections, e.g. {'flap1':[np.radians(5),np.radians(-5)]}
-        :return: (lift coefficient left, lift coefficient right)
+        
+    def calculate_resultant(self, C_L:float, air_brake=False, flap_deflections={})->tuple:
+        """Determines resulting lift coefficient for left and right half wing
+        
+        Parameters
+        ----------
+        C_L : [type]
+            wing lift coefficient
+        air_brake : bool, optional
+            Is airbrake active? (the default is False, which [default_description])
+        flap_deflections : dict, optional
+            control-surface deflections as dict
+        
+        Returns
+        -------
+        tuple
+            (lever arms of lift resultant, lift coefficient for left and right wing)
         """
 
         C_L_, c_l_dis = self._calculate(C_L, air_brake, flap_deflections)
@@ -203,9 +229,17 @@ class LiftAnalysis(object):
     
 class LiftAndMomentAnalysis(LiftAnalysis):
     """
-    Extended Analysis, calculates lift and moments
+    Extended Analysis, calculates lift and aerodynamic moments
+
+    Parameters
+    ----------
+    wing : geometry.Wing
+        Definition of wing to analyse
+    airfoil_db : dict
+        Database of airfoil coefficients {airfoilname: AirfoilData}
     """
-    def __init__(self, wing: Wing, airfoil_db: dict = None):
+
+    def __init__(self, wing: geometry.Wing, airfoil_db: dict = {}):
 
         super().__init__(wing, airfoil_db)  
         
@@ -231,13 +265,24 @@ class LiftAndMomentAnalysis(LiftAnalysis):
             self.moment_aileron_distributions[name] = moment_temp
            
     def calculate(self, lift: float, air_brake=False, flap_deflections={}):
+        """Calculates lift and moment distribution  
+        
+        Parameters
+        ----------
+        lift : float
+            wing lift coefficient
+        air_brake : bool, optional
+            Is airbrake active?
+        flap_deflections : dict, optional
+            Dictionary containing flap deflections, e.g. {'flap1':[np.radians(5),np.radians(-5)]}
+        
+        Returns
+        -------
+        tuple
+            (wing angle of attack, distribution of local lift coefficients, 
+                distribution of local moment coefficients)
         """
-        calculates lift and moment distribution
-        :param lift: demanded lift coefficient
-        :param air_brake: enable or disable [True/False]
-        :param flap_deflections: flap_deflections: dictionary containing flap deflections, e.g. {'flap1':[np.radians(5),np.radians(-5)]}
-        :return: (aoa, lift-distribution, moment-distribution)
-        """
+
         # TODO: Moment airbrake - Zottel 4.45
         
         alpha, lift_distribution = super().calculate(lift, air_brake, flap_deflections)
