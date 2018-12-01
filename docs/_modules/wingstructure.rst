@@ -1,5 +1,5 @@
-wingstructure package
-=====================
+api reference
+=============
 
 Subpackages
 -----------
@@ -75,19 +75,3 @@ wingstructure.structure module
     :undoc-members:
     :show-inheritance:
 
-wingstructure.structure2 module
--------------------------------
-
-.. automodule:: wingstructure.structure2
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: wingstructure
-    :members:
-    :undoc-members:
-    :show-inheritance:

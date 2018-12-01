@@ -170,6 +170,7 @@ class SectionBase(_AbstractBase):
     ----------
     interior: shapely.geometry.LinearRing
         representation of airfoil as shapely geometry
+    
     """
 
     def __init__(self, airfoil_coordinates):
@@ -357,7 +358,7 @@ class ISpar(_AbstractBaseStructure):
 
 
     Attributes
-    ----------shapely geometry representation of interior
+    ----------
     interior : 
         shapely geometry representation of interior
     
