@@ -5,7 +5,7 @@ import numpy as np
 from scipy import interpolate
 
 from .data import geometry
-import liftingline as ll
+from . import liftingline as ll
 
 class AirfoilData(object):
     def __init__(self, alpha0: float = 0, dif_ca_alpha: float = 2*np.pi, cm0: float = 0):
@@ -24,9 +24,6 @@ class LiftAnalysis(object):
         Definition of wing to be analysed.
     airfoil_db : dict
         Database of airfoils used in wing.
-
-    Methods
-    -------
 
     """
     def __init__(self, wing: geometry.Wing, airfoil_db: dict = None):

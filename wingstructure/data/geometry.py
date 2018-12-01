@@ -311,7 +311,7 @@ class _BaseWing(object):
         return self.sections[airfoil_index].airfoil
             
     def airfoils_at(self, y:float) -> tuple:
-        """ Lookup airfoils around given span position"""
+        """Lookup airfoils around given span position"""
         
         for ii, sec in enumerate(self.sections):
             if sec.pos.y > y:
@@ -347,7 +347,7 @@ class _BaseWing(object):
         return [section.airfoil for section in self.sections]
 
 
-class Flap(object):
+class ControlSurface(object):
     """Data object for flap definition
 
     Instances of the class store the span position (start and end) and 
@@ -357,8 +357,8 @@ class Flap(object):
 
     Examples
     --------
-    >>> constantflap = ws.Flap(4.5, 6.5, 0.8)
-    >>> linearflap = ws.Flap(4.5, 6.5, [0.8, 0.75])
+    >>> constantflap = ws.ControlSurface(4.5, 6.5, 0.8)
+    >>> linearflap = ws.ControlSurface(4.5, 6.5, [0.8, 0.75])
     """
     def __init__(self, span_start, span_end, chord):
         if np.isscalar(chord):
@@ -422,7 +422,7 @@ class Wing(_BaseWing):
         if np.isscalar(depth):
             depth = [depth]*2
 
-        flap = Flap(span_pos_start, span_pos_end, depth)
+        flap = ControlSurface(span_pos_start, span_pos_end, depth)
         
         self.flaps[name] = flap
     

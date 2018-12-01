@@ -28,10 +28,13 @@ class TestGeometry():
 
     def test_control_surface(self):
 
-        def cs_validate(val): dict(ds.control_surface.validate(YC(tostr(val))))
+        def cs_validate(val): return dict(ds.control_surface.validate(YC(tostr(val))))
 
         valid_cs = {'name': 'aileron1',
                     'type': 'aileron',
                     'span-start': 0.5,
-                    'span-end': 1.0}
-        assert cs_validate(valid_cs) == valid_cs
+                    'span-end': 1.0,
+                    'chord-pos': 0.7}
+        out = cs_validate(valid_cs)
+        print(out)
+        assert out == valid_cs
