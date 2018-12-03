@@ -1,4 +1,3 @@
-
 import numpy as np
 from wingstructure.data import geometry
 import pytest
@@ -31,8 +30,10 @@ def test_create_from_dict():
     
     wing = geometry.Wing.create_from_dict(wd.wingdict)
 
+    del wing
 
-def test_getmac():
+
+def test_mac():
     import numpy as np
 
     wing = geometry.Wing()

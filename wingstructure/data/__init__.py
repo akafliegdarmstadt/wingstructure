@@ -1,3 +1,2 @@
-from .data_schema import loaddata
-
-from .geometry import Wing
+from . import geometry
+from . import schema
