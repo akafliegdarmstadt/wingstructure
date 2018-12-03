@@ -29,6 +29,10 @@ def _solve_multhopp(αs, θs, chords, b, dcls, return_B = False):
 
             # diagonal elements
             if v == n:
+                # prevent division throught zero
+                if np.isclose(np.sin(θv), 0.0):
+                    θv = 1e-15
+                
                 Bb[v, v] = (M+1)/(4*np.sin(θv))
                 Bd[v] = 2*b/(dcl_v*c)
             # non diagonal elements

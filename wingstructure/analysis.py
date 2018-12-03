@@ -34,10 +34,11 @@ class LiftAnalysis(object):
             airfoil_db = defaultdict(AirfoilData)
 
         # calculate grid points
-        θs, self.calc_ys = ll._calcgridpoints(wing.ys, wing.span, wing.aspect_ratio)
+        θs, self.calc_ys = ll._calcgridpoints(wing.span, wing.aspect_ratio)
 
         # number of gridpoints
         M = len(θs)
+        self.n = M
 
         # interpolate 
         self.calc_chords = np.interp(np.abs(self.calc_ys), wing.ys, wing.chords)
@@ -52,8 +53,15 @@ class LiftAnalysis(object):
         # calculate distributions
 
         ## base distribution
-        αs_base = np.interp(np.abs(self.calc_ys), wing.ys, wing.twists)
-        self.base_liftdist, self.base_lift, self.base_drag = multhopp_(αs_base)
+        def get_α0(airfoil, airfoil_db):
+            return np.radians(airfoil_db[airfoil].alpha0)
+        
+        aerotwists = np.array([get_α0(airfoil, airfoil_db) for airfoil in wing.airfoils])
+
+        αs_base1 = np.interp(np.abs(self.calc_ys), wing.ys, wing.twists) # geometric twist
+        αs_base2 = np.interp(np.abs(self.calc_ys), wing.ys, aerotwists) # aerodynamic twist
+
+        self.base_liftdist, self.base_lift, self.base_drag = multhopp_(αs_base1-αs_base2)
 
         ## flap distributions
         self.flap_liftdist = {}
@@ -105,7 +113,6 @@ class LiftAnalysis(object):
         distribution = np.copy(self.base_liftdist)
 
         C_L -= float(self.base_lift)
-
 
         # take air brake impact into account
         if air_brake:
