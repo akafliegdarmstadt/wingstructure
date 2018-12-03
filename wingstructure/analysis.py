@@ -90,7 +90,7 @@ class LiftAnalysis(object):
             
         for ii, span_pos in enumerate(self.calc_ys):
             
-            if flap.chordpos_at(span_pos) < 1.0 and span_pos > 0:
+            if flap.chordpos_at(span_pos) >= 0.0 and span_pos > 0:
                 
                 lambda_k = 1-flap.chordpos_at(span_pos)
                 
