@@ -405,12 +405,12 @@ class Wing(_BaseWing):
         wing.sections = cls._generate_sections(adict)
 
         # add control surfaces
-        if 'control-surfaces' in adict.keys() and isinstance(adict['control-surfaces'], list):
-            for data in adict['control-surfaces']:
+        if 'control-surfaces' in adict.keys() and isinstance(adict['control-surfaces'], dict):
+            for name, data in adict['control-surfaces'].items():
                 if data['type'] == 'spoiler':
                     wing.set_airbrake(data['span-start'], data['span-end'])
                 elif data['type'] in ('aileron', 'flap', 'flaperon'):
-                    wing.set_flap(data['name'], data['span-start'], 
+                    wing.set_flap(name, data['span-start'], 
                                   data['span-end'], data['chord-pos'])
                 else:
                     raise Exception('not recognized control-surface type: {}'.format(data['type']))

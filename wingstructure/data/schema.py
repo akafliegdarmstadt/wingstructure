@@ -54,7 +54,7 @@ geometry = sy.Map({'wing': wing,
 
 data = sy.Map({
     'geometry': geometry,
-    'aerodynamic': sy.Any()
+    sy.Optional('aerodynamic'): sy.Any()
     })
 
 

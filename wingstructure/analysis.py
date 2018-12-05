@@ -262,7 +262,7 @@ class LiftAndMomentAnalysis(LiftAnalysis):
             
                 if flap.y_start <= span_pos <= flap.y_end:
                 
-                    lambda_k = flap.depth_at(span_pos)
+                    lambda_k = flap.chordpos_at(span_pos)
                     
                     moment_temp[ii] = -1.5 * np.sqrt(lambda_k * (1 - lambda_k)**3)
            
