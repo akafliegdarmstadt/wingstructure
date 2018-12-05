@@ -130,12 +130,12 @@ In the following some will be defined for the wing.
        sections:
            ...
        control-surfaces:
-            - name: 'aileron1'
+            'aileron1':
               type: 'aileron'
               span-start: 5.0
               span-end: 7.0
               chord-pos: 0.8
-            - name: 'spoiler1'
+            'spoiler1':
               type: 'spoiler'
               span-start: 2.5
               span_end: 4.2
