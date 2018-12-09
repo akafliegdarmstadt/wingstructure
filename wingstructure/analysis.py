@@ -79,7 +79,7 @@ class LiftAnalysis(object):
             self.airbrake_distribution, self.airbrake_lift, self.airbrake_drag = multhopp_(α_ab)
 
         ## lift due to angle of attack
-        α_aoa = np.array([1]*M)
+        α_aoa = np.ones(M)
         self.aoa_c_ls, aoa_C_L, self.aoa_C_Di = multhopp_(α_aoa)
         self.aoa_c_ls /= aoa_C_L
         self.aoa_α = np.rad2deg(1/aoa_C_L)
@@ -112,9 +112,11 @@ class LiftAnalysis(object):
         # create empty array for lift distribution
         distribution = np.copy(self.base_liftdist)
 
+        # subtract lift resulting from aerodynamic and geometric twist
+        # from demanded lift coefficient
         C_L -= float(self.base_lift)
 
-        # take air brake impact into account
+        # take air brake into account
         if air_brake:
             C_L -= self.airbrake_lift
             C_Di += self.airbrake_drag
@@ -134,7 +136,7 @@ class LiftAnalysis(object):
                 from warnings import warn
                 warn('flap {} does not exist'.format(flap_name))
 
-        return C_L, self.aoa_c_ls * np.mean(C_L) + distribution, np.mean(C_Di) + self.aoa_C_Di*np.mean(C_L)
+        return C_L, self.aoa_c_ls * C_L + distribution, C_Di + self.aoa_C_Di*C_L
 
     def calculate(self, C_L: float, air_brake=False, flap_deflections={}, return_C_Di=False)->tuple:
         """Calculates lift distribution with defined control surface setting
@@ -159,9 +161,9 @@ class LiftAnalysis(object):
         C_L_, c_ls, C_Di = self._calculate(C_L, air_brake, flap_deflections)
 
         if not return_C_Di:
-            return self.aoa_α * np.mean(C_L_), c_ls
+            return self.aoa_α * C_L_, c_ls
         else:
-            return self.aoa_α * np.mean(C_L_), c_ls, C_Di
+            return self.aoa_α * C_L_, c_ls, C_Di
     
     @staticmethod
     def _calculate_eta_keff(eta_k: float or np.ndarray) -> float:

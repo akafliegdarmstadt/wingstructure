@@ -74,7 +74,7 @@ def _calculate_liftcoefficients(Θs, γs, chords, Λ, b, M):
 
 
     # calculate lift coefficient distritbution
-    c_l = 2*b/(np.array(chords)) * np.array(γs)
+    c_l = 2*b/(np.array(chords)) * np.array(γs) # TODO: Check this formula
 
     # calculate overall lift coefficient (whole wing)
     C_L = π*Λ / (M+1) * np.sum(γs * np.sin(Θs))
@@ -97,7 +97,7 @@ def _calcgridpoints(b:float, Λ:float, M:int = None):
 
     return θs, calc_ys
 
-def multhopp(αs: np.array, chords: np.array, ys: np.array, dcls: np.array=np.nan, M:int=None,
+def multhopp(αs: np.ndarray, chords: np.ndarray, ys: np.ndarray, dcls: np.ndarray or float=np.nan, M:int=None,
              mode = 'c_l', interp = True ):
     """Use multhopp's quadrature to solve prandtl's lifting line problem
     
@@ -127,30 +127,26 @@ def multhopp(αs: np.array, chords: np.array, ys: np.array, dcls: np.array=np.na
     if np.isnan(dcls).all():
         dcls = np.array([2*π]*len(ys))
 
+    # calculate wingspan
+    b = 2*max(ys)
+
+    # calculate wing area
+    if min(ys) >= 0.0:
+        S = 2 * np.trapz(y=chords, x=ys)
+    else:
+        S = np.trapz(y=chords, x=ys)
+    
+    # calculate aspect ratio
+    Λ = b**2 / S
+
     # interpolate
     if interp: 
-        # calculate wingspan
-        b = 2*max(ys)
-
-        # calculate wing area
-        S = 2 * np.trapz(y=chords, x=ys)
-        
-        # calculate aspect ratio
-        Λ = b**2 / S
         θs, calc_ys = _calcgridpoints(b, Λ, M)
         
         calc_αs = np.interp(np.abs(calc_ys), ys, αs)
         calc_chords = np.interp(np.abs(calc_ys), ys, chords)
         calc_dcls = np.interp(np.abs(calc_ys), ys, dcls)
     else:
-        # calculate wingspan
-        b = 2*max(ys)
-
-        # calculate wing area
-        S = 2 * np.trapz(y=chords, x=ys)
-
-        Λ = b**2/S
-
         calc_ys = ys
         calc_chords = chords
         calc_αs = αs
