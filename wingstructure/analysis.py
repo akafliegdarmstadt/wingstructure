@@ -162,69 +162,6 @@ class LiftAnalysis(object):
             return self.aoa_α * np.mean(C_L_), c_ls
         else:
             return self.aoa_α * np.mean(C_L_), c_ls, C_Di
-
-        
-    def calculate_resultant(self, C_L:float, air_brake=False, flap_deflections={})->tuple:
-        """Determines resulting lift coefficient for left and right half wing
-        
-        Parameters
-        ----------
-        C_L : [type]
-            wing lift coefficient
-        air_brake : bool, optional
-            Is airbrake active? (the default is False, which [default_description])
-        flap_deflections : dict, optional
-            control-surface deflections as dict
-        
-        Returns
-        -------
-        tuple
-            (lever arms of lift resultant, lift coefficient for left and right wing)
-        """
-
-        C_L_, c_l_dis = self._calculate(C_L, air_brake, flap_deflections)
-
-        # calculate lever for lift
-
-        y_lever = np.zeros(2)
-
-        # shorter names for used values
-        c_i = self.calc_chords
-        y_i = self.calc_ys
-
-        # span width of calculation wing segments
-        diff_y_i = -np.diff(y_i)
-
-        # area of calculated wing segments
-        area_i = (c_i[:-1] + c_i[1:]) / 2 * diff_y_i
-
-        # redistribute area, target-> area relevant for given lift coeffients
-        area_ip = np.pad(area_i, 1, 'edge')
-
-        area_im = (area_ip[1:] + area_ip[:-1]) / 2
-
-        # calculate leaver arms for local lift
-        y_l = np.copy(y_i)
-        y_l[0] = np.mean(y_l[:2])
-        y_l[-1] = np.mean(y_l[-2:])
-
-        mid = len(y_l)//2
-
-        y_l_left = y_l[mid:]
-        y_l_left[0] = np.mean(y_l_left[:2])
-        y_l_right = y_l[:mid+1]
-        y_l_right[-1] = np.mean(y_l_right[-2:])
-
-        y_lever[0] = sum(c_l_dis[mid:] * area_im[mid:] * y_l_left) /\
-                    sum(c_l_dis[mid:] * area_im[mid:])
-        y_lever[1] = sum(c_l_dis[:mid+1] * area_im[:mid+1] * y_l_right) /\
-                    sum(c_l_dis[:mid+1] * area_im[:mid+1])
-
-        # add base and flap lift
-        C_L_ += C_L - np.mean(C_L_)
-
-        return (*y_lever, *C_L_)
-
     
     @staticmethod
     def _calculate_eta_keff(eta_k: float or np.ndarray) -> float:
