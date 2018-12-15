@@ -136,7 +136,7 @@ class LiftAnalysis(object):
                 from warnings import warn
                 warn('flap {} does not exist'.format(flap_name))
 
-        return C_L, self.aoa_c_ls * C_L + distribution, C_Di + self.aoa_C_Di*C_L
+        return np.mean(C_L), self.aoa_c_ls * np.mean(C_L) + distribution, C_Di + self.aoa_C_Di*np.mean(C_L)
 
     def calculate(self, C_L: float, air_brake=False, flap_deflections={}, return_C_Di=False)->tuple:
         """Calculates lift distribution with defined control surface setting
