@@ -3,7 +3,7 @@
 Module providing the multhop quadrature method for solving prandtl's lifting line problem.
 """
 import numpy as np
-from numba import jit
+#from numba import jit
 from collections import namedtuple
 
 
