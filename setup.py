@@ -3,11 +3,11 @@ from setuptools import setup, find_packages
 
 setup(name='wingstructure',
     version='0.0.2',
-    description='',
-    url='None',
+    description='A library for structure calculations in airplane wings',
+    url='https://github.com/helo9/wingstructure',
     author='helo',
-    author_email='-',
-    license='GPL 2.0',
+    author_email='kontakt@akaflieg.tu-darmstadt.de',
+    license='MIT',
     packages=find_packages('.'),
     install_requires= [
         'numpy',
