@@ -2,8 +2,7 @@
 
 ![lift distribution](examples/Liftdistribution.png)
 
-[![Stable documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://wingstructure.readthedocs.io/en/latest/)
-
+[![Documentation Status](https://readthedocs.org/projects/wingstructure/badge/?version=latest)](https://wingstructure.readthedocs.io/en/latest/?badge=latest)
 
 
 ## Installation
