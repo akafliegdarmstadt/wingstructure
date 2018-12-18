@@ -14,7 +14,7 @@ pip install https://github.com/helo9/wingstructure/archive/master.zip
 
 ## Usage
 
-wingstructure has three main primary functions
+wingstructure has three primary functions
 
  * object oriented representation of wing geometry
  * lift and moment calculation based on multhopp quadrature
