@@ -590,7 +590,7 @@ class MassAnalysis:
 
             current = current.parent
         
-        return shpl_geom.Point(cg/mass), mass
+        return cg/mass, mass
         
 
 def _oderside(side):

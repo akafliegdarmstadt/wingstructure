@@ -14,7 +14,15 @@ pip install https://github.com/helo9/wingstructure/archive/master.zip
 
 ## Usage
 
-### Creation of Wing
+wingstructure has three main primary functions
+
+ * object oriented representation of wing geometry
+ * lift and moment calculation based on multhopp quadrature
+ * mass estimation for wing sections
+
+ Those functions are briefly presented in the following:
+
+### Creating a Wing
 Create simple geometry:
 ```python
 # create wing object
@@ -43,7 +51,7 @@ plt.savefig('wing.png')
 
 ![geometry](examples/wing.png)
 
-### Calculation of lift distribution
+### Calculating lift distribution
 ```python
 from wingstructure import analysis
 
@@ -51,3 +59,10 @@ liftana = analysis.LiftAnalysis(wing)
 
 α, distribution = liftana.calculate(lift=0.8)
 ```
+
+### Estimating wing section's mass
+
+![section](examples/section.svg)
+
+An example calculation can be found in [example/MassEstimation](examples/Experimental_Mass_and_Structure.ipynb).
+
