@@ -1,40 +1,55 @@
-# wingstructure
-a python tool for wing structure calculations
+# wingstructure - an open source python tool assisting with certification of sailplane wings
 
 ![lift distribution](examples/Liftdistribution.png)
 
-## Usage
-Use pip to install the package:
+[![Stable documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://wingstructure.readthedocs.io/en/latest/)
+
+
+
+## Installation
+pip can be used to install the package:
 ```sh
 pip install https://github.com/helo9/wingstructure/archive/master.zip
 ```
 
-### Python
-Import relevant classes:
-```python
-from wingstructure import Wing, LiftAnalysis, LiftAndMomentAnalysis
-```
+## Usage
 
+### Creation of Wing
 Create simple geometry:
 ```python
-span_positions = [0, 2, 5, 7]
-chord_lengths = [1, 0.9, 0.6, 0.3]
-offsets = [0, 0.1, 0.4, 0.7]
-twists = [0]*4
-airfoils = [None]*4
-wing = Wing.create_from_planform(span_positions, chord_lengths, offsets, twists, airfoils)
+from wingstructure import data
+
+# create wing object
+wing = data.Wing()
+
+# add sections to wing
+wing.add_section(data.Point(0.0, 0.0, 0.0), 1.0, 0.0)
+wing.add_section(data.Point(0.05, 4.25, 0.0), 0.7, 0.0)
+wing.add_section(data.Point(0.1, 7.75, 0.0), 0.35, 0.0)
+
+# set fuselage with (=root of wing) to zero
 wing.set_root_pos(0.0)
-wing.set_airbrake(1.5,2.9)
+
+# define spoiler position
+wing.set_spoiler(1.5, 2.9)
+
+# define control-surfaces
+wing.set_flap('flap', 1, 2.8,[0.7,0.7])
+wing.set_flap('flap2', 3, 7, [0.7,0.8])
+
+# display simple wing
+plt.figure(figsize=(8,5))
+wing.plot()
+plt.savefig('wing.png')
 ```
 
 ![geometry](examples/wing.png)
 
-Create Analysis
+### Calculate Lift Distribution
 ```python
-liftana = LiftAnalysis(wing)
-```
+from wingstructure import analysis
 
-Calculate Distribution of lift Coefficient
-```python
+liftana = analysis.LiftAnalysis(wing)
+
 α, distribution = liftana.calculate(lift=0.8)
 ```

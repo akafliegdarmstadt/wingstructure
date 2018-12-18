@@ -435,6 +435,9 @@ class Wing(_BaseWing):
     def set_airbrake(self, span_pos_start, span_pos_end):
         if span_pos_end > span_pos_start:
             self.airbrake = {'start': span_pos_start, 'end': span_pos_end}
+
+    def set_spoiler(self, span_pos_start, span_pos_end):
+        self.set_airbrake(span_pos_start, span_pos_end)
             
     def is_airbrake_pos(self, span_pos: float) -> bool:
         if self.airbrake is None:
