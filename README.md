@@ -17,8 +17,6 @@ pip install https://github.com/helo9/wingstructure/archive/master.zip
 ### Creation of Wing
 Create simple geometry:
 ```python
-from wingstructure import data
-
 # create wing object
 wing = data.Wing()
 
@@ -35,7 +33,7 @@ wing.set_spoiler(1.5, 2.9)
 
 # define control-surfaces
 wing.set_flap('flap', 1, 2.8,[0.7,0.7])
-wing.set_flap('flap2', 3, 7, [0.7,0.8])
+wing.set_flap('flap2', 4.25, 7, [0.7,0.8])
 
 # display simple wing
 plt.figure(figsize=(8,5))
