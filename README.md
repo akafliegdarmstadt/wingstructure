@@ -43,7 +43,7 @@ plt.savefig('wing.png')
 
 ![geometry](examples/wing.png)
 
-### Calculate Lift Distribution
+### Calculation of lift distribution
 ```python
 from wingstructure import analysis
 
