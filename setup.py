@@ -8,7 +8,7 @@ setup(name='wingstructure',
     author='helo',
     author_email='kontakt@akaflieg.tu-darmstadt.de',
     license='MIT',
-    packages=find_packages('.'),
+    packages=['wingstructure'],
     install_requires= [
         'numpy',
         'scipy',
