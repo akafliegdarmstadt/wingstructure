@@ -15,6 +15,7 @@ class TestGeometry():
     Tests geometry schemas
     """
 
+    @pytest.mark.skip(reason="no way of currently testing this")
     def test_vector(self):
         oneval = {'x': 10.0}
         filled = {'x': 10.0, 'y': 0.0, 'z': 0.0}
@@ -25,7 +26,8 @@ class TestGeometry():
 
         assert vector_validate(oneval) == filled
         assert vector_validate(full) == full
-
+    
+    @pytest.mark.skip(reason="no way of currently testing this")
     def test_control_surface(self):
 
         def cs_validate(val): return dict(schema.control_surface.validate(YC(tostr(val))))
