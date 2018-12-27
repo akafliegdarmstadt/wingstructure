@@ -2,7 +2,7 @@
 
 ![lift distribution](examples/Liftdistribution.png)
 
-[![Documentation Status](https://readthedocs.org/projects/wingstructure/badge/?version=latest)](https://wingstructure.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/wingstructure/badge/?version=latest)](https://wingstructure.readthedocs.io/en/latest/?badge=latest) [![Build Status](https://travis-ci.com/akafliegdarmstadt/wingstructure.svg?branch=master)](https://travis-ci.com/akafliegdarmstadt/wingstructure)
 
 
 ## Installation
