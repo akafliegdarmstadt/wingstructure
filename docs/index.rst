@@ -13,8 +13,8 @@ Welcome to wingstructure's documentation!
    usage/quickstart
    usage/inputdata
    usage/structure
-   
-   _modules/modules
+
+   reference/modules
 
 Indices and tables
 ==================
