@@ -1,4 +1,4 @@
-from wingstructure.mass import Masspoint
+from wingstructure.structure.mass import Masspoint
 
 
 def test_addition():

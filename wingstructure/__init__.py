@@ -1,4 +1,3 @@
-from . import analysis
+from . import aero
 from . import data
-from . import liftingline
 from . import structure
