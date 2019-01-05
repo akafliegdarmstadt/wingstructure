@@ -75,7 +75,7 @@ For a more convenient access to the data an
 
    In [3]: wing = data.Wing.create_from_dict(definition['geometry']['wing'])
 
-   @savefig plot_simple.png width=4in
+   @savefig wingplot.png width=4in
    In [4]: wing.plot()
 
 Besides plotting the wing object has some useful properties. For example
@@ -90,8 +90,75 @@ Further information can be found in :py:class:`wingstructure.data.Wing`.
 Calculating wing's lift distribution
 ------------------------------------
 
+The wing is now defined and can be analysed. Therefore the analysis
+submodule of wingstructure is imported. Within this submodule you find
+an LiftAnalyis class, which will be used now.
+
+.. ipython::
+
+   In [6]: from wingstructure import analysis
+
+   In [7]: liftana = analysis.LiftAnalysis(wing)
+
+   In [8]: alpha, c_ls = liftana.calculate(1.0)
+
+This calculates the angle of attack and local lift coefficients. Those
+are plotted in the following. The associated span positions are stored
+inside liftana (:py:attr:`wingstructure.analysis.LiftAnalysis.calc_ys`).
+
+.. ipython::
+   
+   In [9]: from matplotlib import pyplot as plt
+   
+   In [10]: plt.figure();
+
+   @savefig lift.png width=4in
+   In [11]: plt.plot(liftana.calc_ys, c_ls)
+      ....: plt.xlabel('span position')
+      ....: plt.ylabel('local lift coefficient $c_l$')
+      ....: plt.grid();
+
+With creation of liftana automatically distributions for all control surfaces
+are created.
+The method :py:meth:`wingstructure.analysis.LiftAnalysis.calculate` combines
+those to calculate local lift coefficient and angle of attack for a
+requested lift. Its parameters allow also the enabling of spoilers and
+deflection of other control surfaces. Have a look at
+`this analysis <https://github.com/akafliegdarmstadt/wingstructure/blob/master/examples/Analysis_Example.ipynb>`_
+and the documentation :py:meth:`wingstructure.analysis.calculate`.
 
 
 Estimating wing section's mass
 ------------------------------
+
+Calculating the mass of a wing section is not that closely connected to the
+previous freatures. You start with the import of the
+:py:mod:`wingstructure.structure`
+module and loading of an airfoil *dat* file. 
+For loading :py:func:`numpy.loadtxt` is used. 
+
+.. ipython::
+   
+   In [12]: from wingstructure import structure
+
+   In [13]: import numpy as np
+
+   In [14]: coords = np.loadtxt('usage/FX 61-184.dat', skiprows=1, delimiter=',')
+
+The loaded airfoil file can for examle be found 
+`here <http://airfoiltools.com/airfoil/seligdatfile?airfoil=fx61184-il>`_
+
+To analyse a section with this airfoil as outline an instance of
+:py:obj:`wingstructure.structure.SectionBase` is created. Before
+filling this outline with structure we define a material:
+
+.. ipython::
+
+   In [15]: import collections as col
+
+   In [16]: Material = col.namedtuple('Material', ['ρ'])
+
+   In [17]: basematerial = Material(ρ=0.3e3)
+
+Now the structure can be created.
 
