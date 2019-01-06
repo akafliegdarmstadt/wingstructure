@@ -3,18 +3,26 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to wingstructure's documentation!
-=========================================
+===========================
+wingstructure documentation
+===========================
+
+Contents
+========
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: User Documentation
 
    usage/quickstart
    usage/inputdata
    usage/structure
-   
-   _modules/modules
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Developer Documentation
+
+   reference/modules
 
 Indices and tables
 ==================

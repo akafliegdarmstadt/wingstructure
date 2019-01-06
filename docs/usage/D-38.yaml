@@ -1,0 +1,31 @@
+geometry:
+  wing:
+    sections:
+    - pos:
+          x: 0.0
+          y: 0.0
+          z: 0.0
+      chord: 0.943
+      airfoil: 'FX 61-184'
+    - pos:
+          y: 4.5
+      chord: 0.754
+      twist: -1.13
+      airfoil: 'FX 61-184'
+    - pos:
+          x: 0.134
+          y: 7.5
+      chord: 0.377
+      twist: -3.86
+      airfoil: 'FX 60-126'
+    control-surfaces:
+      QR:
+        type: 'aileron'
+        span-start: 4.125
+        span-end: 7.125
+        chord-pos: 0.8
+      BK:
+        type: 'spoiler'
+        span-start: 2.035
+        span-end: 3.310
+        chord-pos: 0.6
