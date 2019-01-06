@@ -3,7 +3,7 @@ Getting Started
 ===============
 
 This document is intended as starting point for wingstructure usage.
-The wingstructure package has three principal functions:
+The wingstructure package has three main features:
 
  * **representation of wing geometry**
 
@@ -149,8 +149,13 @@ The loaded airfoil file can for examle be found
 `here <http://airfoiltools.com/airfoil/seligdatfile?airfoil=fx61184-il>`_
 
 To analyse a section with this airfoil as outline an instance of
-:py:obj:`wingstructure.structure.SectionBase` is created. Before
-filling this outline with structure we define a material:
+:py:obj:`wingstructure.structure.SectionBase` is created. 
+
+.. ipython::
+
+   In [14]: secbase = structure.SectionBase(coords)
+
+Before filling this outline with structure we define a material:
 
 .. ipython::
 
@@ -160,5 +165,26 @@ filling this outline with structure we define a material:
 
    In [17]: basematerial = Material(ρ=0.3e3)
 
-Now the structure can be created.
+Now the structure can be created. Definition begins from the outside
+inwards. First feature is a constant layer (for example a fabric). We continue
+with a spar definition and analyse the section's mass.
 
+.. ipython::
+
+   In [18]: layer = structure.Layer(secbase, basematerial, 3e-3)
+
+   In [19]: spar = structure.ISpar(layer,
+      ....:                        {'flange': basematerial,
+      ....:                         'web': basematerial},
+      ....:                          0.5,
+      ....:                        0.300,
+      ....:                        3e-2,
+      ....:                        0.8,
+      ....:                        1e-3)
+
+   In [20]: massana = structure.MassAnalysis(spar)
+      ....: massana.massproperties
+
+For a more complex example have a look at the corresponding
+`notebook <https://github.com/akafliegdarmstadt/wingstructure/blob/master/examples/Experimental_Mass_and_Structure.ipynb>`_
+.
