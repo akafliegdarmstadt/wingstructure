@@ -2,14 +2,13 @@
 
 ![lift distribution](examples/Liftdistribution.png)
 
-[![Stable documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://wingstructure.readthedocs.io/en/latest/)
-
+[![Documentation Status](https://readthedocs.org/projects/wingstructure/badge/?version=latest)](https://wingstructure.readthedocs.io/en/latest/?badge=latest) [![Build Status](https://travis-ci.com/akafliegdarmstadt/wingstructure.svg?branch=master)](https://travis-ci.com/akafliegdarmstadt/wingstructure)
 
 
 ## Installation
 pip can be used to install the package:
 ```sh
-pip install https://github.com/helo9/wingstructure/archive/master.zip
+pip install https://github.com/akafliegdarmstadt/wingstructure/archive/master.zip
 ```
 
 ## Usage
