@@ -16,7 +16,8 @@ setup(name='wingstructure',
         'matplotlib',
         'pytest',
         'strictyaml',
-        'shapely'
+        'shapely',
+        'ipython'
     ],
     zip_safe=False
     )
