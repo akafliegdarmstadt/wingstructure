@@ -42,8 +42,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.autodoc',
     'IPython.sphinxext.ipython_directive',
-    'IPython.sphinxext.ipython_console_highlighting',
-    'matplotlib.sphinxext.only_directives'
+    'IPython.sphinxext.ipython_console_highlighting'
 ]
 
 # Napoleon settings
