@@ -12,6 +12,7 @@ setup(name='wingstructure',
     install_requires= [
         'numpy',
         'scipy',
+        'pandas',
         'sortedcontainers',
         'matplotlib',
         'pytest',

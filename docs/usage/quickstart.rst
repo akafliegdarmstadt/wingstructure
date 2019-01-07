@@ -95,7 +95,8 @@ submodule of wingstructure is imported. Within this submodule you find
 an LiftAnalyis class, which will be used now.
 
 .. ipython::
-
+   :okwarning:
+   
    In [6]: from wingstructure import analysis
 
    In [7]: liftana = analysis.LiftAnalysis(wing)
