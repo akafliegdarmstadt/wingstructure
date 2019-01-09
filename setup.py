@@ -20,7 +20,8 @@ setup(name='wingstructure',
         'pytest',
         'strictyaml',
         'shapely',
-        'ipython'
+        'ipython',
+        'pandas'
     ],
     zip_safe=False
     )
