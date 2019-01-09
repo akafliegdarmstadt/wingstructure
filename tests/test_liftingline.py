@@ -1,5 +1,5 @@
 import numpy as np
-from wingstructure.liftingline import multhopp
+from wingstructure.aero.liftingline import multhopp
 
 def test_multhopp_schlichting():
     Λ = 6 # aspect ratio of wing

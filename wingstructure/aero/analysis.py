@@ -4,7 +4,7 @@ from warnings import warn
 import numpy as np
 from scipy import interpolate
 
-from .data import geometry
+from ..data import geometry
 from . import liftingline as ll
 
 class AirfoilData(object):

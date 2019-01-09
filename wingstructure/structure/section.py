@@ -1,4 +1,4 @@
-"""Module for representation of wing's structure
+"""Module for representation of wing section's structure
 
 This module defines classes which allow definition of a wing section as chain of multiple structure elements.
 Definition of a structure starts with SectionBase, which stores airfoil coordinates. Beginning with this exterior

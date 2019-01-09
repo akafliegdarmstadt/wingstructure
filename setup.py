@@ -8,7 +8,10 @@ setup(name='wingstructure',
     author='helo',
     author_email='kontakt@akaflieg.tu-darmstadt.de',
     license='MIT',
-    packages=['wingstructure', 'wingstructure.data'],
+    packages=['wingstructure', 
+              'wingstructure.data', 
+              'wingstructure.aero',
+              'wingstructure.structure'],
     install_requires= [
         'numpy',
         'scipy',
@@ -18,7 +21,8 @@ setup(name='wingstructure',
         'pytest',
         'strictyaml',
         'shapely',
-        'ipython'
+        'ipython',
+        'pandas'
     ],
     zip_safe=False
     )
