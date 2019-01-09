@@ -1,4 +1,4 @@
-from . import section, internalreactions
+from . import section, internalreactions, beammechanics
 
 from .section import SectionBase, Layer, Reinforcement
 from .section import Display, ISpar, BoxSpar, MassAnalysis
