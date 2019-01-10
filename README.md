@@ -4,6 +4,7 @@
 
 [![Documentation Status](https://readthedocs.org/projects/wingstructure/badge/?version=latest)](https://wingstructure.readthedocs.io/en/latest/?badge=latest) [![Build Status](https://travis-ci.com/akafliegdarmstadt/wingstructure.svg?branch=master)](https://travis-ci.com/akafliegdarmstadt/wingstructure)
 
+[![Coverage Status](https://coveralls.io/repos/github/akafliegdarmstadt/wingstructure/badge.svg?branch=master)](https://coveralls.io/github/akafliegdarmstadt/wingstructure?branch=master)
 
 ## Installation
 pip can be used to install the package:
