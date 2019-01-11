@@ -2,7 +2,7 @@ import sys, os
 from setuptools import setup, find_packages
 
 with open("README.md", "r") as fh:
-    long_description = fg.read()
+    long_description = fh.read()
 
 setup(name='wingstructure',
     version='0.0.2',
