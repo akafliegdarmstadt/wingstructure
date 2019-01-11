@@ -226,6 +226,16 @@ class Layer(_AbstractBaseStructure):
 
         self.geometry = shpl_geom.Polygon(exterior)-shpl_geom.Polygon(self.interior)
 
+    def _centerline(self):
+        exterior = self.parent.interior
+
+        inside_direction = self._get_inside_direction(exterior)
+
+        centerline = exterior.parallel_offset(self._thickness/2.0,
+                                              side=inside_direction)
+        
+        return centerline
+
 
 class Reinforcement(Layer):
     """Local reinforcement structure
@@ -381,6 +391,9 @@ class ISpar(_AbstractBaseStructure):
 
         self._update_geometry(parent.interior)
 
+    def webpos_abs(self):
+        return self.midpos + (self.webpos - 0.5) * self.flangewidth
+
     def _update_geometry(self, exterior):
         self.interior = exterior
         start = self.midpos - self.flangewidth/2
@@ -410,7 +423,7 @@ class ISpar(_AbstractBaseStructure):
                                                  side=offsetside)
             offsetlines.append(offsetline)
 
-        webpos = start + self.webpos * self.flangewidth
+        webpos_abs = start + self.webpos * self.flangewidth
 
         line1 = offsetlines[0]
         line2 = offsetlines[1]
@@ -422,8 +435,8 @@ class ISpar(_AbstractBaseStructure):
         else:
             webbox = shpl_geom.LinearRing([*line1.coords[::-1], *line2.coords])
 
-        webstart = webpos - self.webthickness/2
-        webend = webpos + self.webthickness/2
+        webstart = webpos_abs - self.webthickness/2
+        webend = webpos_abs + self.webthickness/2
 
         webcutbox = shpl_geom.box(webstart, exterior.bounds[1]-3,
                              webend,  exterior.bounds[1]+3)
@@ -461,7 +474,6 @@ class ISpar(_AbstractBaseStructure):
             return shpl_geom.Point(cg), mass
         else:
             return super().massproperties
-
 
 
 class BoxSpar(_AbstractBaseStructure):
@@ -591,7 +603,71 @@ class MassAnalysis:
             current = current.parent
         
         return cg/mass, mass
+
+
+class LineIdealisation:
+    """Idealisation of section for structural analysis
+
+    Currently only section consisting of a I-Spar and one Layer can
+    be idealized.
+
+    Parameters
+    ----------
+    parent
+        last element of structure feature chain to be analysed
+    """
+
+    def __init__(self, parent):
         
+        self.parent = parent
+
+        self._update()
+
+    def _update(self):
+
+        self.spar = self.parent
+        self.shell = self.spar.parent
+
+        if not isinstance(self.spar, ISpar) or not isinstance(self.shell, Layer):
+            raise Exception('Only limited section definition allowed for Idealization.')
+
+
+    @property
+    def geometry(self):
+        from shapely import geometry as shpl_geom
+        bb = self.shell.parent.interior.bounds
+        cutbox = shpl_geom.box(bb[0], bb[1], self.spar.webpos_abs(), bb[3])
+
+        shell_center = self.shell._centerline()
+
+        def opt_linemerge(geom):
+            from shapely import ops
+            if geom.type == 'MultiLineString':
+                return ops.linemerge(geom)
+            return geom
+
+        geom_left = opt_linemerge(shell_center.intersection(cutbox))
+        geom_right = opt_linemerge(shell_center.difference(cutbox))
+
+        mid_start = np.array(geom_left.coords[0])
+        mid_end = np.array(geom_left.coords[-1])
+
+        coords_mid = mid_start + np.outer((mid_end-mid_start), np.linspace(0,1,40)).T
+
+        return np.array(geom_left.coords), np.array(geom_right.coords), coords_mid
+
+    @property
+    def thickness(self):
+        pass
+    
+    @property
+    def youngsmoduli(self):
+        pass
+    
+    @property
+    def shearmoduli(self):
+        pass
+
 
 def _oderside(side):
     if side == 'left':

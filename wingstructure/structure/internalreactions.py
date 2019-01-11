@@ -1,6 +1,34 @@
 import numpy as np
 
 
+def calc_lineloadresultants(ys, q):
+    """Calculate resultants of line loads acting on individual segments
+    """
+    # calculate element lengths
+    Δys = np.diff(ys)
+    
+    # initialize arrays for
+    
+    # force resultants
+    Q = np.zeros_like(Δys)
+    
+    # resultants attack point
+    y_res = np.zeros_like(Δys)
+    
+    # iterate over parts of wing
+    for i in range(1,len(y_res)):
+        
+        # trapez rule to get resultant
+        Q[i-1] = Δys[i-1] * (q[i]+q[i-1])/2
+        # center of trapez as attack point of resultant
+        y_res[i-1] = ys[i] + np.abs(Δys[i-1])/3 * np.abs((q[i]+2*q[i-1]) / (q[i]+q[i-1]))
+        
+        if ys[i] > y_res[i-1]  or ys[i-1] < y_res[i-1]  :
+            print('Achtung Achtung')
+        
+    return y_res, Q
+
+
 def combine_loads( loadslist ):
     loads = np.vstack(loadslist)
     
