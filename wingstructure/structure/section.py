@@ -661,7 +661,7 @@ class LineIdealisation:
 
         coords_mid = mid_start + np.outer((mid_end-mid_start), np.linspace(0,1,40)).T
 
-        self.geometries = np.array(geom_left.coords), np.array(geom_right.coords), coords_mid
+        self.geometries = np.array(geom_right.coords), coords_mid, np.array(geom_left.coords)
     
     @property
     def geometry(self):
@@ -680,21 +680,21 @@ class LineIdealisation:
         shell_t = self.shell.thickness
         web_t = self.spar.webthickness
 
-        return self._generate_datatuple((shell_t, shell_t, web_t))
+        return self._generate_datatuple((shell_t, web_t, shell_t))
     
     @property
     def youngsmoduli(self):
         shell_E = self.shell.material.E
         web_E = self.spar.material['web'].E
 
-        return self._generate_datatuple((shell_E, shell_E, web_E))
+        return self._generate_datatuple((shell_E, web_E, shell_E))
 
     @property
     def shearmoduli(self):
         shell_G = self.shell.material.G
         web_G = self.shell.material.G
 
-        return self._generate_datatuple((shell_G, shell_G, web_G))
+        return self._generate_datatuple((shell_G, web_G, shell_G))
 
 
 def _oderside(side):
