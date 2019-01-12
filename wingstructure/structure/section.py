@@ -236,6 +236,10 @@ class Layer(_AbstractBaseStructure):
         
         return centerline
 
+    @property
+    def thickness(self):
+        return self._thickness
+
 
 class Reinforcement(Layer):
     """Local reinforcement structure
@@ -621,9 +625,13 @@ class LineIdealisation:
         
         self.parent = parent
 
-        self._update()
+        self.geometries = [None, None, None]
 
-    def _update(self):
+        self._chekc()
+
+        self._update_geometry()
+
+    def _chekc(self):
 
         self.spar = self.parent
         self.shell = self.spar.parent
@@ -632,8 +640,7 @@ class LineIdealisation:
             raise Exception('Only limited section definition allowed for Idealization.')
 
 
-    @property
-    def geometry(self):
+    def _update_geometry(self):
         from shapely import geometry as shpl_geom
         bb = self.shell.parent.interior.bounds
         cutbox = shpl_geom.box(bb[0], bb[1], self.spar.webpos_abs(), bb[3])
@@ -654,19 +661,40 @@ class LineIdealisation:
 
         coords_mid = mid_start + np.outer((mid_end-mid_start), np.linspace(0,1,40)).T
 
-        return np.array(geom_left.coords), np.array(geom_right.coords), coords_mid
+        self.geometries = np.array(geom_left.coords), np.array(geom_right.coords), coords_mid
+    
+    @property
+    def geometry(self):
+
+        return self.geometries
+
+    def _generate_datatuple(self, valtuple):
+
+        datagenerator = (valtuple[i]*np.ones_like(self.geometries[i]) for i in range(3))
+
+        return tuple(datagenerator)
 
     @property
     def thickness(self):
-        pass
+        
+        shell_t = self.shell.thickness
+        web_t = self.spar.webthickness
+
+        return self._generate_datatuple((shell_t, shell_t, web_t))
     
     @property
     def youngsmoduli(self):
-        pass
-    
+        shell_E = self.shell.material.E
+        web_E = self.spar.material['web'].E
+
+        return self._generate_datatuple((shell_E, shell_E, web_E))
+
     @property
     def shearmoduli(self):
-        pass
+        shell_G = self.shell.material.G
+        web_G = self.shell.material.G
+
+        return self._generate_datatuple((shell_G, shell_G, web_G))
 
 
 def _oderside(side):
