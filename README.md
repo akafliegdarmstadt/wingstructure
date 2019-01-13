@@ -2,7 +2,7 @@
 
 ![lift distribution](examples/Liftdistribution.png)
 
-[![PyPI version](https://badge.fury.io/py/wingstructure.svg)](https://badge.fury.io/py/wingstructure) [![Documentation Status](https://readthedocs.org/projects/wingstructure/badge/?version=latest)](https://wingstructure.readthedocs.io/en/latest/?badge=latest) [![Build Status](https://travis-ci.com/akafliegdarmstadt/wingstructure.svg?branch=master)](https://travis-ci.com/akafliegdarmstadt/wingstructure) [![Coverage Status](https://coveralls.io/repos/github/akafliegdarmstadt/wingstructure/badge.svg?branch=master)](https://coveralls.io/github/akafliegdarmstadt/wingstructure?branch=master) [![Codacy Badge](https://api.codacy.com/project/badge/Grade/1d3c65877733486cace59b0ffe890407)](https://www.codacy.com/app/helo9/wingstructure?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=helo9/wingstructure&amp;utm_campaign=Badge_Grade)
+[![PyPI version](https://badge.fury.io/py/wingstructure.svg)](https://badge.fury.io/py/wingstructure) [![Documentation Status](https://readthedocs.org/projects/wingstructure/badge/?version=latest)](https://wingstructure.readthedocs.io/en/latest/?badge=latest) [![Build Status](https://travis-ci.com/akafliegdarmstadt/wingstructure.svg?branch=master)](https://travis-ci.com/akafliegdarmstadt/wingstructure) [![codecov](https://codecov.io/gh/akafliegdarmstadt/wingstructure/branch/master/graph/badge.svg)](https://codecov.io/gh/akafliegdarmstadt/wingstructure) [![Codacy Badge](https://api.codacy.com/project/badge/Grade/1d3c65877733486cace59b0ffe890407)](https://www.codacy.com/app/helo9/wingstructure?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=helo9/wingstructure&amp;utm_campaign=Badge_Grade)
 
 ## Installation
 pip can be used to install the package:
