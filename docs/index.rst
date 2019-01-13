@@ -15,8 +15,6 @@ Contents
    :caption: User Documentation
 
    usage/quickstart
-   usage/inputdata
-   usage/structure
 
 .. toctree::
    :maxdepth: 2
