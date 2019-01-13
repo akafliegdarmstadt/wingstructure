@@ -7,7 +7,7 @@
 ## Installation
 pip can be used to install the package:
 ```sh
-pip install https://github.com/akafliegdarmstadt/wingstructure/archive/master.zip
+pip install wingstructure
 ```
 
 ## Usage
