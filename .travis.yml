@@ -6,6 +6,5 @@ install:
   - pip install codecov
   - pip install pytest-cov
 script:
-  - pytest --cov=./
-after_success:
+  - pytest tests --cov=wingstructure
   - codecov
