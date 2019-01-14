@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='wingstructure',
-    version='0.0.2',
+    version='0.0.4',
     description='A library for structure calculations in airplane wings',
     url='https://github.com/akafliegdarmstadt/wingstructure',
     author='helo',
