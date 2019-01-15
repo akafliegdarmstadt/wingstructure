@@ -95,16 +95,8 @@ class _AbstractBaseStructure(_AbstractBase):
     def massproperties(self):
         return (self.geometry.centroid, self.geometry.area*self.material.ρ)
 
-    def _sum_massproperties(self):
-        mass = 0.0
-        cg = np.zeros(2)
-        for child in self.children:
-            childcg, childmass = child.massproperties
-
-            mass += childmass
-            cg += childmass * np.array(childcg)
-        
-        return shpl_geom.Point(cg/mass), mass
+    def area(self):
+        return self.geometry.area
 
     def _get_inside_direction(self, linearring):
         """Gets the inside direction for parallel offset (left or right)
@@ -235,6 +227,30 @@ class Layer(_AbstractBaseStructure):
                                               side=inside_direction)
         
         return centerline
+
+    def middle_circumference(self):
+        """Calculate circumference of centerline
+        
+        Returns
+        -------
+        float
+            circumference value
+        """
+
+        return self._centerline().length
+
+    def enclosed_area(self):
+        """Calculate area enclosed by centerline
+
+        Returns
+        -------
+        float
+            ecnlosed area
+        """
+        
+        cline = self._centerline()
+
+        return shpl_geom.Polygon(cline).area
 
     @property
     def thickness(self):
