@@ -25,12 +25,12 @@ def test_structurecreation(airfoilcoords):
 
     boxspar = section.BoxSpar(innerlayer, amat, 0.5, 0.2, 0.01,
                                     0.01)
-def test_MassAnalysis():
+def test_MassAnalysis(airfoilcoords):
     # create material
     amat = material.IsotropicMaterial(1.225, 210e3, 50e3)
 
     # create sectionbase instance
-    secbase = section.SectionBase(airfoilcoords())
+    secbase = section.SectionBase(airfoilcoords)
     
     outerlayer = section.Layer(secbase, amat, thickness=0.001)
     innerlayer = section.Layer(outerlayer, amat, thickness=0.001)
