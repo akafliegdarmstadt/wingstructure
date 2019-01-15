@@ -73,6 +73,7 @@ class _AbstractBaseStructure(_AbstractBase):
     def __init__(self, parent, material):
         super().__init__()
         self.parent = parent
+        self.parent._addchild(self) #TODO: probably should not use underscored method
         self.material = material
         self._cut_elements = []
         parent._addchild(self)
@@ -591,20 +592,31 @@ class MassAnalysis:
     def __init__(self, parent):
         self.parent = parent
 
+    #TODO: this can be cleaned up a lot
+    #TODO: maybe calculate more than first child
     @property
     def massproperties(self):
         mass = 0.0
         cg = np.zeros(2)
             
         current = self.parent
-        while not isinstance(current, SectionBase):
+        while current != None:
+            if isinstance(current, SectionBase):
+                if len(current.children) > 0:
+                    current = current.children[0]
+                else:
+                    current = None
+                continue
 
             cur_cg, cur_mass = current.massproperties
 
             mass += cur_mass
             cg += cur_mass * np.array(cur_cg)
 
-            current = current.parent
+            if len(current.children) > 0:
+                current = current.children[0]
+            else:
+                current = None
         
         return cg/mass, mass
 
