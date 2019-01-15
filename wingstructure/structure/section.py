@@ -600,7 +600,7 @@ class MassAnalysis:
         cg = np.zeros(2)
             
         current = self.parent
-        while current != None:
+        while current is not None:
             if isinstance(current, SectionBase):
                 if len(current.children) > 0:
                     current = current.children[0]
