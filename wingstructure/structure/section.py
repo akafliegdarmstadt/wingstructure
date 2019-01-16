@@ -54,15 +54,14 @@ from shapely.algorithms import cga
 
 class _AbstractBase(ABC):
     def __init__(self):
-        self.children = []
+        self.child = None
         self.geometry = None
   
     def _update(self, interior):
-        for child in self.children:
-            child._update()
+        self.child._update()
     
-    def _addchild(self, child):
-        self.children.append(child)
+    def _setchild(self, child):
+        self.child = child
 
     @property
     def cut_elements(self):
@@ -73,9 +72,10 @@ class _AbstractBaseStructure(_AbstractBase):
     def __init__(self, parent, material):
         super().__init__()
         self.parent = parent
+        self.parent._setchild(self)
         self.material = material
         self._cut_elements = []
-        parent._addchild(self)
+        parent._setchild(self)
 
     @property
     def svgdata(self):
@@ -591,21 +591,23 @@ class MassAnalysis:
     def __init__(self, parent):
         self.parent = parent
 
+    #TODO: this can be cleaned up a lot
+    #TODO: maybe calculate more than first child
     @property
     def massproperties(self):
         mass = 0.0
         cg = np.zeros(2)
             
         current = self.parent
-        while not isinstance(current, SectionBase):
+        while current is not None:
+            if not isinstance(current, SectionBase):
+                cur_cg, cur_mass = current.massproperties
 
-            cur_cg, cur_mass = current.massproperties
-
-            mass += cur_mass
-            cg += cur_mass * np.array(cur_cg)
-
-            current = current.parent
+                mass += cur_mass
+                cg += cur_mass * np.array(cur_cg)
         
+            current = current.child
+
         return cg/mass, mass
 
 
