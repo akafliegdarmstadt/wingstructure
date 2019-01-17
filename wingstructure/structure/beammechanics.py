@@ -352,6 +352,69 @@ class Crosssection:
       
         return continuity_leftcell, continuity_rightcell
     
+    def plot_around_profil(self, shearflow):
+    
+        geometry_left = self.geometries[0]
+        geometry_middle = self.geometries[1]
+        geometry_right = self.geometries[2]
+        
+        shearflow_left = shearflow[0]
+        shearflow_middle = shearflow[1]
+        shearflow_right = shearflow[2]
+
+        point_profil_left = []
+        point_profil_middle = []
+        point_profil_right = []
+
+        for i in range(0,len(geometry_left)-1):
+            a = np.array(geometry_left[i])
+            b = np.array(geometry_left[i+1])
+
+            m = (a+b)/2
+            n = b-a
+
+            normalvec = [n[1], -n[0]]/np.linalg.norm(n)
+
+            point_profil_left_i = normalvec*shearflow_left[i] + m
+            point_profil_left.append(point_profil_left_i)
+
+        for i in range(0,len(geometry_middle)-1):
+            a = np.array(geometry_middle[i])
+            b = np.array(geometry_middle[i+1])
+
+            m = (a+b)/2
+            n = b-a
+
+            normalvec = [n[1], -n[0]]/np.linalg.norm(n)
+
+            point_profil_middle_i = normalvec*shearflow_middle[i] + m
+            point_profil_middle.append(point_profil_middle_i)
+            
+        for i in range(0,len(geometry_right)-1):
+            a = np.array(geometry_right[i])
+            b = np.array(geometry_right[i+1])
+
+            m = (a+b)/2
+            n = b-a
+
+            normalvec = [n[1], -n[0]]/np.linalg.norm(n)
+
+            point_profil_right_i = normalvec*shearflow_right[i] + m
+            point_profil_right.append(point_profil_right_i)
+
+        x = np.array(point_profil_left)
+        y = np.array(point_profil_middle)
+        z = np.array(point_profil_right)
+
+        return x, y, z
+
+    
+    
+    
+    
+    
+    
+    
     
     
     
