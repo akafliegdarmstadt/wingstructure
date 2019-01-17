@@ -26,7 +26,7 @@ def test_section_sorting():
 
 
 def test_create_from_dict():
-    import wingdict as wd
+    from . import wingdict as wd
     
     wing = geometry.Wing.create_from_dict(wd.wingdict)
 
