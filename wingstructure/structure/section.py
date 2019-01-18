@@ -44,6 +44,7 @@ Example
 """
 
 from abc import ABC, abstractmethod
+from functools import wraps
 
 import numpy as np
 from numpy.linalg import norm
@@ -52,17 +53,21 @@ from shapely import ops
 from shapely.algorithms import cga
 
 
+def updatetrigger(f):
+    @wraps
+    def f_withupdate(self, *args, **kwds):
+        res = f(self, *args, **kwds)
+
+        self._trigger_update()
+
+        return res
+
+    return f_withupdate
+
 class _AbstractBase(ABC):
     def __init__(self):
         self.children = []
-        self.geometry = None
-  
-    def _update(self, interior):
-        for child in self.children:
-            child._update()
-    
-    def _addchild(self, child):
-        self.children.append(child)
+        self.geometry = None    
 
     @property
     def cut_elements(self):
@@ -70,22 +75,22 @@ class _AbstractBase(ABC):
 
 
 class _AbstractBaseStructure(_AbstractBase):
-    def __init__(self, parent, material):
+    def __init__(self, material):
         super().__init__()
-        self.parent = parent
         self.material = material
         self._cut_elements = []
-        parent._addchild(self)
 
-    @property
-    def svgdata(self):
-        return self.parent.svgdata
+        self.interior = None
+        self.geometry = None
+        self._updatecallback = None
+        # TODO: updatecallback list!
 
-    def _update(self, interior):
-        self._update_geometry(interior)
+    def _set_updatecallback(self, callback):
+        self._updatecallback = callback
 
-        for child in self.children:
-            child._update()
+    def _trigger_update(self):
+        callback = self._updatecallback
+        callback(self)
 
     @abstractmethod
     def _update_geometry(self, exterior):
@@ -139,24 +144,8 @@ class _AbstractBaseStructure(_AbstractBase):
 
     @property
     def cut_elements(self):
-        return [*self.parent.cut_elements, *self._cut_elements]
+        return self._cut_elements
     
-    def _repr_svg_(self):
-        def collectgeometry(part):
-            
-            current = self
-            while not isinstance(current, SectionBase):
-                oldcur = current
-                current = current.parent
-
-                yield oldcur.geometry
- 
-        collection = list(collectgeometry(self))
-
-        shply_collection = shpl_geom.GeometryCollection(collection)
-
-        return shply_collection._repr_svg_()
-
 
 class SectionBase(_AbstractBase):
     """Foundation for section's wing structure description
@@ -176,14 +165,48 @@ class SectionBase(_AbstractBase):
     def __init__(self, airfoil_coordinates):
         super().__init__()
         self._geometry = shpl_geom.LinearRing(airfoil_coordinates)
-
-    @property
-    def interior(self):
-        return self._geometry
+        self.features = []
     
-    def _repr_svg_(self):
-        return self._geometry._repr_svg_()
+    def append(self, newfeature):
+        self.features.append(newfeature)
+        if len(self.features) == 1:
+            parentgeometry = self._geometry
+        else:
+            parentgeometry = self.features[-2].interior
 
+        self.features[-1]._update_geometry(parentgeometry)
+        self.features[-1]._set_updatecallback(self._update_callback)
+
+    def insert(self, index, newfeature):
+        pass
+
+    def pop(self):
+        popped = self.features.pop()
+        popped._set_updatecallback(None)
+
+    def _update_callback(self, feature):
+
+        self._update(feature)
+    
+    def _update(self, updated_feature):
+
+        first_idx = self.features.index(updated_feature)
+
+        last_interior = self.features[first_idx-1] if first_idx>0 else self._geometry
+
+        for feature in self.features[first_idx:]:
+
+            feature._update_geometry(last_interior)
+
+            last_interior = feature.interior
+
+    def _repr_svg_(self):
+ 
+        allgeom = [feature.geometry for feature in self.features]
+
+        shply_collection = shpl_geom.GeometryCollection([self._geometry, *allgeom])
+
+        return shply_collection._repr_svg_()
 
 class Layer(_AbstractBaseStructure):
     """Layer of constant thickness representation
@@ -204,16 +227,16 @@ class Layer(_AbstractBaseStructure):
     
     """
 
-    def __init__(self, parent, material, thickness=0.0):
-        super().__init__(parent, material)
+    def __init__(self, material, thickness=0.0):
+        super().__init__(material)
         self._thickness = thickness
 
-        self.interior = None
-
-        self._update_geometry(parent.interior)
+        self.exterior = None
 
     def _update_geometry(self, exterior):
         
+        self.exterior = None
+
         inside_direction = self._get_inside_direction(exterior)
 
         self.interior = exterior.parallel_offset(self._thickness,
@@ -227,18 +250,23 @@ class Layer(_AbstractBaseStructure):
         self.geometry = shpl_geom.Polygon(exterior)-shpl_geom.Polygon(self.interior)
 
     def _centerline(self):
-        exterior = self.parent.interior
 
-        inside_direction = self._get_inside_direction(exterior)
+        inside_direction = self._get_inside_direction(self.exterior)
 
-        centerline = exterior.parallel_offset(self._thickness/2.0,
-                                              side=inside_direction)
+        centerline = self.exterior.parallel_offset(self._thickness/2.0,
+                                                    side=inside_direction)
         
         return centerline
 
     @property
     def thickness(self):
         return self._thickness
+
+    @thickness.setter
+    def thickness(self, thickness):
+        self._thickness = thickness
+
+        self._trigger_update()
 
 
 class Reinforcement(Layer):
@@ -262,14 +290,12 @@ class Reinforcement(Layer):
 
     """
 
-    def __init__(self, parent, material, thickness=0.0, limits=None):
-        _AbstractBaseStructure.__init__(self, parent, material)  #TODO fix
+    def __init__(self, material, thickness=0.0, limits=None):
+        _AbstractBaseStructure.__init__(self, material)  #TODO fix
         self._thickness = thickness
         self._limits = limits
 
         self.interior = None
-
-        self._update_geometry(parent.interior)
     
     def _update_geometry(self, exterior):
         limited_box = shpl_geom.box(self._limits[0], exterior.bounds[1]*1.1,
@@ -318,38 +344,6 @@ class Reinforcement(Layer):
         self.interior = shpl_geom.LinearRing(pts2)
 
 
-class Display(object):
-    def __init__(self, geometry):
-        self.geometry = geometry
-    
-    def _repr_svg_(self):
-        bounds = self.geometry.bounds
-        height = bounds[3]-bounds[1]
-        width = bounds[2]-bounds[0]
-
-        string = '<svg viewBox=\"{}\" xmlns="http://www.w3.org/2000/svg">\
-                    <defs>\
-                        <!-- simple dot marker definition -->\
-                        <marker id="dot" viewBox="0 0 10 10" refX="5" refY="5"\
-                            markerWidth="5" markerHeight="5">\
-                        <circle cx="5" cy="5" r="5" fill="red" />\
-                        </marker>\
-                    </defs>\
-                  {}</svg>'.format("0, 0, {}, {}".format(width, height),"{}")
-
-        offset = [bounds[0], -bounds[3]]
-
-        try:
-            pts = np.array(self.geometry)
-        except:
-            try:
-                pts = np.array(self.geometry.exterior)
-            except:
-                return ''
-
-        return string.format(svgpolyline(pts, offset))
-
-
 class ISpar(_AbstractBaseStructure):
     """Representation for I or double-T Spar
     
@@ -383,17 +377,14 @@ class ISpar(_AbstractBaseStructure):
 
     """
 
-    def __init__(self, parent, material, midpos: float, flangewidth: float,
+    def __init__(self, material, midpos: float, flangewidth: float,
                  flangethickness: float, webpos: float, webthickness: float):
-        super().__init__(parent, material)
+        super().__init__(material)
         self.midpos = midpos
         self.flangewidth = flangewidth
         self.flangethickness = flangethickness
         self.webpos = webpos
         self.webthickness = webthickness
-        self.interior = None
-
-        self._update_geometry(parent.interior)
 
     def webpos_abs(self):
         return self.midpos + (self.webpos - 0.5) * self.flangewidth
