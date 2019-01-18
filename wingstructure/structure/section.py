@@ -89,6 +89,9 @@ class _AbstractBaseStructure(_AbstractBase):
         self._updatecallback = callback
 
     def _trigger_update(self):
+        if self._updatecallback is None:
+            return
+
         callback = self._updatecallback
         callback(self)
 
@@ -192,21 +195,23 @@ class SectionBase(_AbstractBase):
 
         first_idx = self.features.index(updated_feature)
 
-        last_interior = self.features[first_idx-1] if first_idx>0 else self._geometry
+        last_interior = self.features[first_idx-1].interior if first_idx>0 else self._geometry
 
         for feature in self.features[first_idx:]:
-
+            
             feature._update_geometry(last_interior)
 
             last_interior = feature.interior
-
+    
     def _repr_svg_(self):
  
         allgeom = [feature.geometry for feature in self.features]
 
         shply_collection = shpl_geom.GeometryCollection([self._geometry, *allgeom])
 
-        return shply_collection._repr_svg_()
+        svg = shply_collection._repr_svg_()
+
+        return rework_svg(svg, 1000, 250)
 
 class Layer(_AbstractBaseStructure):
     """Layer of constant thickness representation
@@ -362,7 +367,7 @@ class ISpar(_AbstractBaseStructure):
     webpos : float
         position of web at flange (relative, 0 - left, 1 - right)
     webthickness : float
-        thickness of web
+        thickness of wepropertyb
 
 
     Attributes
@@ -380,11 +385,38 @@ class ISpar(_AbstractBaseStructure):
     def __init__(self, material, midpos: float, flangewidth: float,
                  flangethickness: float, webpos: float, webthickness: float):
         super().__init__(material)
-        self.midpos = midpos
-        self.flangewidth = flangewidth
-        self.flangethickness = flangethickness
+        self._midpos = midpos
+        self._flangewidth = flangewidth
+        self._flangethickness = flangethickness
         self.webpos = webpos
         self.webthickness = webthickness
+
+    @property
+    def midpos(self):
+        return self._midpos
+
+    @midpos.setter
+    def midpos(self,midposnew):
+        self._midpos = midposnew
+        self._trigger_update()
+
+    @property
+    def flangewidth(self):
+        return self._flangewidth
+
+    @flangewidth.setter
+    def flangewidth(self, newflangewidth):
+        self._flangewidth = newflangewidth
+        self._trigger_update()
+
+    @property
+    def flangethickness(self):
+        return self._flangethickness
+
+    @flangethickness.setter
+    def flangethickness(self, newflangethickness):
+        self._flangethickness = newflangethickness
+        self._trigger_update()
 
     def webpos_abs(self):
         return self.midpos + (self.webpos - 0.5) * self.flangewidth
@@ -693,3 +725,35 @@ def _oderside(side):
         return 'right'
     else:
         return 'left'
+
+def rework_svg(svg, width, height=100, stroke_width=None):
+    import re
+    
+    if stroke_width is None:
+        
+        search_res = re.search(r'viewBox="((?:-?\d+.\d+\s*){4})"', svg)
+        
+        if search_res is None:
+            raise Exception('Invalid SVG!')
+            
+        bounds = [float(val) for val in search_res.groups()[0].split()]
+        Δy = bounds[3]-bounds[1]
+        Δx = bounds[2]-bounds[0]
+        
+        stroke_width = min(Δx,Δy)/100
+    
+    svg = re.sub(r'width="\d+\.\d+"',
+                 'width="{:.1f}"'.format(width),
+                 svg,
+                 count=1)
+    
+    svg = re.sub(r'height="\d+\.\d+"',
+                 'heigth="{:.1f}"'.format(height),
+                 svg,
+                 count=1)
+    
+    svg = re.sub(r'stroke-width="\d+\.\d+"',
+                 'stroke-width="{:f}"'.format(stroke_width),
+                 svg)
+
+    return svg
