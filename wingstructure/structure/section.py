@@ -66,6 +66,10 @@ def updatetrigger(f):
 
 class _AbstractBase(ABC):
     def __init__(self):
+<<<<<<< HEAD
+=======
+        self.children = []
+>>>>>>> e32c2f60d3317db19d76fa7dbe783d0f4758023e
         self.geometry = None    
 
     @property
@@ -78,7 +82,10 @@ class _AbstractBaseStructure(_AbstractBase):
         super().__init__()
         self.material = material
         self._cut_elements = []
+<<<<<<< HEAD
 
+=======
+>>>>>>> e32c2f60d3317db19d76fa7dbe783d0f4758023e
 
         self.interior = None
         self.geometry = None
