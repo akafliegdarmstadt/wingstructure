@@ -3,8 +3,9 @@ python:
   - "3.6"
 install:
   - pip install .
-  - pip install codecov
+  - pip install python-coveralls
   - pip install pytest-cov
 script:
   - pytest tests --cov=wingstructure
-  - codecov
+after_success:
+  - coveralls

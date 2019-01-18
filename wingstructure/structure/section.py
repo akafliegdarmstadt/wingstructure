@@ -614,21 +614,23 @@ class MassAnalysis:
     def __init__(self, parent):
         self.parent = parent
 
+    #TODO: this can be cleaned up a lot
+    #TODO: maybe calculate more than first child
     @property
     def massproperties(self):
         mass = 0.0
         cg = np.zeros(2)
             
         current = self.parent
-        while not isinstance(current, SectionBase):
+        while current is not None:
+            if not isinstance(current, SectionBase):
+                cur_cg, cur_mass = current.massproperties
 
-            cur_cg, cur_mass = current.massproperties
-
-            mass += cur_mass
-            cg += cur_mass * np.array(cur_cg)
-
-            current = current.parent
+                mass += cur_mass
+                cg += cur_mass * np.array(cur_cg)
         
+            current = current.child
+
         return cg/mass, mass
 
 
