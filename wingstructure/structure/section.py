@@ -404,8 +404,8 @@ class ISpar(_AbstractBaseStructure):
         self._midpos = midpos
         self._flangewidth = flangewidth
         self._flangethickness = flangethickness
-        self.webpos = webpos
-        self.webthickness = webthickness
+        self._webpos = webpos
+        self._webthickness = webthickness
 
     @property
     def midpos(self):
@@ -432,6 +432,24 @@ class ISpar(_AbstractBaseStructure):
     @flangethickness.setter
     def flangethickness(self, newflangethickness):
         self._flangethickness = newflangethickness
+        self._trigger_update()
+
+    @property
+    def webpos(self):
+        return self._webpos
+
+    @webpos.setter
+    def webpos(self, newwebpos):
+        self._webpos = newwebpos
+        self._trigger_update()
+
+    @property
+    def webthickness(self):
+        return self._webthickness
+
+    @webthickness.setter
+    def webthickness(self, newwebthickness):
+        self._webthickness = newwebthickness
         self._trigger_update()
 
     def webpos_abs(self):
@@ -627,26 +645,20 @@ class MassAnalysis:
     
     """
 
-    def __init__(self, parent):
-        self.parent = parent
+    def __init__(self, sectionbase):
+        self.secbase = sectionbase
 
-    #TODO: this can be cleaned up a lot
-    #TODO: maybe calculate more than first child
     @property
     def massproperties(self):
         mass = 0.0
         cg = np.zeros(2)
             
-        current = self.parent
-        while current is not None:
-            if not isinstance(current, SectionBase):
-                cur_cg, cur_mass = current.massproperties
+        for feature in self.secbase.features:
+            cur_cg, cur_mass = feature.massproperties
 
-                mass += cur_mass
-                cg += cur_mass * np.array(cur_cg)
+            mass += cur_mass
+            cg += cur_mass * np.array(cur_cg)
         
-            current = current.child
-
         return cg/mass, mass
 
 
