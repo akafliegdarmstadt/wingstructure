@@ -156,7 +156,11 @@ class SectionBase:
         self.features = []
     
     def append(self, newfeature):
+        if newfeature in self.features:
+            raise Exception('Can append feature {} only once!'.format(newfeature))
+        
         self.features.append(newfeature)
+
         if len(self.features) == 1:
             parentgeometry = self._geometry
         else:
@@ -168,6 +172,17 @@ class SectionBase:
     def insert(self, index, newfeature):
         self.features.insert(index, newfeature)
         self._update(index)
+
+    def extend(self, newfeatures):
+        for newfeature in newfeatures:
+            self.append(newfeature)
+
+    def remove(self, feature):
+        if feature not in self.features:
+            raise Exception('No feature {} found.'.format(feature))
+
+        feature._rm_updatecallback(self._update_callback)
+        self.features.remove(feature)
 
     def pop(self):
         popped = self.features.pop()
