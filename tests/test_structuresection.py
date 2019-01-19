@@ -28,6 +28,11 @@ def test_structurecreation(airfoilcoords):
     ispar = section.ISpar(amat, 0.5, 0.2, 0.01, 0.5, 0.01)
     secbase.append(ispar)
 
+    # create a massanalysis
+    massana = MassAnalysis(secbase)
+    res = massana.massproperties
+
+    assert res is not None
     # remove I-spar and add boxspar
     secbase.pop()
     boxspar = section.BoxSpar(amat, 0.5, 0.2, 0.01, 0.01)
@@ -46,8 +51,8 @@ def test_structurecreation(airfoilcoords):
     # change thickness of outerlayer
     outerlayer.thickness = outerlayer.thickness*2
 
-    # create a massanalysis
-    massana = MassAnalysis(secbase)
+    # analyse mass again
     res = massana.massproperties
 
     assert res is not None
+    
