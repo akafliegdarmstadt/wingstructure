@@ -17,32 +17,42 @@ def test_structurecreation(airfoilcoords):
     # create sectionbase instance
     secbase = section.SectionBase(airfoilcoords)
     
-    outerlayer = section.Layer(secbase, amat, thickness=0.001)
-    innerlayer = section.Layer(outerlayer, amat, thickness=0.001)
+    # create shell layers
+    outerlayer = section.Layer(amat, thickness=0.001)
+    innerlayer = section.Layer(amat, thickness=0.001)
 
-    ispar = section.ISpar(innerlayer, amat, 0.5, 0.2, 0.01,
-                                0.5, 0.01)
+    # add shell layers to secbase
+    secbase.extend([outerlayer, innerlayer])
 
-    boxspar = section.BoxSpar(innerlayer, amat, 0.5, 0.2, 0.01,
-                                    0.01)
-def test_MassAnalysis(airfoilcoords):
-    # create material
-    amat = material.IsotropicMaterial(1.225, 210e3, 50e3)
+    # create I-spar and add to secbase
+    ispar = section.ISpar(amat, 0.5, 0.2, 0.01, 0.5, 0.01)
+    secbase.append(ispar)
 
-    # create sectionbase instance
-    secbase = section.SectionBase(airfoilcoords)
-    
-    outerlayer = section.Layer(secbase, amat, thickness=0.001)
-    innerlayer = section.Layer(outerlayer, amat, thickness=0.001)
-
-    ispar = section.ISpar(innerlayer, amat, 0.5, 0.2, 0.01,
-                                0.5, 0.01)
-
-    boxspar = section.BoxSpar(innerlayer, amat, 0.5, 0.2, 0.01,
-                                    0.01)
-
+    # create a massanalysis
     massana = MassAnalysis(secbase)
-    cg, mass = massana.massproperties
+    res = massana.massproperties
 
-    #TODO: write a meaningful test
-    assert mass != None
+    assert res is not None
+    # remove I-spar and add boxspar
+    secbase.pop()
+    boxspar = section.BoxSpar(amat, 0.5, 0.2, 0.01, 0.01)
+    secbase.append(boxspar)
+
+    # remove first shell layer
+    secbase.remove(outerlayer)
+
+    # remove first shell layer second time -> Exception
+    with pytest.raises(Exception):
+        secbase.remove(outerlayer)
+
+    # add again
+    secbase.insert(0, outerlayer)
+
+    # change thickness of outerlayer
+    outerlayer.thickness = outerlayer.thickness*2
+
+    # analyse mass again
+    res = massana.massproperties
+
+    assert res is not None
+    

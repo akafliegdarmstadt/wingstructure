@@ -44,6 +44,7 @@ Example
 """
 
 from abc import ABC, abstractmethod
+from functools import wraps
 
 import numpy as np
 from numpy.linalg import norm
@@ -52,40 +53,41 @@ from shapely import ops
 from shapely.algorithms import cga
 
 
-class _AbstractBase(ABC):
-    def __init__(self):
-        self.child = None
-        self.geometry = None
-  
-    def _update(self, interior):
-        self.child._update()
-    
-    def _setchild(self, child):
-        self.child = child
+def updatetrigger(f):
+    @wraps
+    def f_withupdate(self, *args, **kwds):
+        res = f(self, *args, **kwds)
 
-    @property
-    def cut_elements(self):
-        return []
+        self._trigger_update()
 
+        return res
 
-class _AbstractBaseStructure(_AbstractBase):
-    def __init__(self, parent, material):
+    return f_withupdate
+
+class _AbstractBaseStructure:
+    def __init__(self, material):
         super().__init__()
-        self.parent = parent
-        self.parent._setchild(self)
+        self.geometry = None  
         self.material = material
         self._cut_elements = []
-        parent._setchild(self)
 
-    @property
-    def svgdata(self):
-        return self.parent.svgdata
+        self.interior = None
+        self.geometry = None
+        self._updatecallbacks = []
+    
+    def _add_updatecallback(self, callback):
+        if callback not in self._updatecallbacks:
+            self._updatecallbacks.append(callback)
 
-    def _update(self, interior):
-        self._update_geometry(interior)
+    def _rm_updatecallback(self, callback):
+        try:
+            self._updatecallbacks.remove(callback)
+        except ValueError:
+            return
 
-        for child in self.children:
-            child._update()
+    def _trigger_update(self):
+        for callback in self._updatecallbacks:
+            callback(self)
 
     @abstractmethod
     def _update_geometry(self, exterior):
@@ -131,26 +133,10 @@ class _AbstractBaseStructure(_AbstractBase):
 
     @property
     def cut_elements(self):
-        return [*self.parent.cut_elements, *self._cut_elements]
+        return self._cut_elements
     
-    def _repr_svg_(self):
-        def collectgeometry(part):
-            
-            current = self
-            while not isinstance(current, SectionBase):
-                oldcur = current
-                current = current.parent
 
-                yield oldcur.geometry
- 
-        collection = list(collectgeometry(self))
-
-        shply_collection = shpl_geom.GeometryCollection(collection)
-
-        return shply_collection._repr_svg_()
-
-
-class SectionBase(_AbstractBase):
+class SectionBase:
     """Foundation for section's wing structure description
     
     Parameters
@@ -166,15 +152,69 @@ class SectionBase(_AbstractBase):
     """
 
     def __init__(self, airfoil_coordinates):
-        super().__init__()
         self._geometry = shpl_geom.LinearRing(airfoil_coordinates)
+        self.features = []
+    
+    def append(self, newfeature):
+        if newfeature in self.features:
+            raise Exception('Can append feature {} only once!'.format(newfeature))
+        
+        self.features.append(newfeature)
 
-    @property
-    def interior(self):
-        return self._geometry
+        if len(self.features) == 1:
+            parentgeometry = self._geometry
+        else:
+            parentgeometry = self.features[-2].interior
+
+        self.features[-1]._update_geometry(parentgeometry)
+        self.features[-1]._add_updatecallback(self._update_callback)
+
+    def insert(self, index, newfeature):
+        self.features.insert(index, newfeature)
+        self._update(index)
+
+    def extend(self, newfeatures):
+        for newfeature in newfeatures:
+            self.append(newfeature)
+
+    def remove(self, feature):
+        if feature not in self.features:
+            raise Exception('No feature {} found.'.format(feature))
+
+        feature._rm_updatecallback(self._update_callback)
+        self.features.remove(feature)
+
+    def pop(self):
+        popped = self.features.pop()
+        popped._rm_updatecallback(self._update_callback)
+
+    def _update_callback(self, updated_feature):
+        try:
+            first_idx = self.features.index(updated_feature) #TODO: Error handling
+        except ValueError:
+            raise ValueError('Feature {} not in {}s features.'.format(updated_feature, self))
+
+        self._update(first_idx)
+    
+    def _update(self, first_idx):
+
+        last_interior = self.features[first_idx-1].interior if first_idx>0 else self._geometry
+
+        for feature in self.features[first_idx:]:
+            
+            feature._update_geometry(last_interior)
+
+            last_interior = feature.interior
     
     def _repr_svg_(self):
-        return self._geometry._repr_svg_()
+ 
+        allgeom = [feature.geometry for feature in self.features]
+
+        shply_collection = shpl_geom.GeometryCollection([self._geometry, *allgeom])
+
+        svg = shply_collection._repr_svg_()
+
+        return rework_svg(svg, 1000, 250)
 
 
 class Layer(_AbstractBaseStructure):
@@ -196,16 +236,16 @@ class Layer(_AbstractBaseStructure):
     
     """
 
-    def __init__(self, parent, material, thickness=0.0):
-        super().__init__(parent, material)
+    def __init__(self, material, thickness=0.0):
+        super().__init__(material)
         self._thickness = thickness
 
-        self.interior = None
-
-        self._update_geometry(parent.interior)
+        self.exterior = None
 
     def _update_geometry(self, exterior):
         
+        self.exterior = None
+
         inside_direction = self._get_inside_direction(exterior)
 
         self.interior = exterior.parallel_offset(self._thickness,
@@ -219,12 +259,11 @@ class Layer(_AbstractBaseStructure):
         self.geometry = shpl_geom.Polygon(exterior)-shpl_geom.Polygon(self.interior)
 
     def _centerline(self):
-        exterior = self.parent.interior
 
-        inside_direction = self._get_inside_direction(exterior)
+        inside_direction = self._get_inside_direction(self.exterior)
 
-        centerline = exterior.parallel_offset(self._thickness/2.0,
-                                              side=inside_direction)
+        centerline = self.exterior.parallel_offset(self._thickness/2.0,
+                                                    side=inside_direction)
         
         return centerline
 
@@ -256,6 +295,12 @@ class Layer(_AbstractBaseStructure):
     def thickness(self):
         return self._thickness
 
+    @thickness.setter
+    def thickness(self, thickness):
+        self._thickness = thickness
+
+        self._trigger_update()
+
 
 class Reinforcement(Layer):
     """Local reinforcement structure
@@ -278,14 +323,12 @@ class Reinforcement(Layer):
 
     """
 
-    def __init__(self, parent, material, thickness=0.0, limits=None):
-        _AbstractBaseStructure.__init__(self, parent, material)  #TODO fix
+    def __init__(self, material, thickness=0.0, limits=None):
+        _AbstractBaseStructure.__init__(self, material)  #TODO fix
         self._thickness = thickness
         self._limits = limits
 
         self.interior = None
-
-        self._update_geometry(parent.interior)
     
     def _update_geometry(self, exterior):
         limited_box = shpl_geom.box(self._limits[0], exterior.bounds[1]*1.1,
@@ -334,38 +377,6 @@ class Reinforcement(Layer):
         self.interior = shpl_geom.LinearRing(pts2)
 
 
-class Display(object):
-    def __init__(self, geometry):
-        self.geometry = geometry
-    
-    def _repr_svg_(self):
-        bounds = self.geometry.bounds
-        height = bounds[3]-bounds[1]
-        width = bounds[2]-bounds[0]
-
-        string = '<svg viewBox=\"{}\" xmlns="http://www.w3.org/2000/svg">\
-                    <defs>\
-                        <!-- simple dot marker definition -->\
-                        <marker id="dot" viewBox="0 0 10 10" refX="5" refY="5"\
-                            markerWidth="5" markerHeight="5">\
-                        <circle cx="5" cy="5" r="5" fill="red" />\
-                        </marker>\
-                    </defs>\
-                  {}</svg>'.format("0, 0, {}, {}".format(width, height),"{}")
-
-        offset = [bounds[0], -bounds[3]]
-
-        try:
-            pts = np.array(self.geometry)
-        except:
-            try:
-                pts = np.array(self.geometry.exterior)
-            except:
-                return ''
-
-        return string.format(svgpolyline(pts, offset))
-
-
 class ISpar(_AbstractBaseStructure):
     """Representation for I or double-T Spar
     
@@ -384,7 +395,7 @@ class ISpar(_AbstractBaseStructure):
     webpos : float
         position of web at flange (relative, 0 - left, 1 - right)
     webthickness : float
-        thickness of web
+        thickness of wepropertyb
 
 
     Attributes
@@ -399,17 +410,59 @@ class ISpar(_AbstractBaseStructure):
 
     """
 
-    def __init__(self, parent, material, midpos: float, flangewidth: float,
+    def __init__(self, material, midpos: float, flangewidth: float,
                  flangethickness: float, webpos: float, webthickness: float):
-        super().__init__(parent, material)
-        self.midpos = midpos
-        self.flangewidth = flangewidth
-        self.flangethickness = flangethickness
-        self.webpos = webpos
-        self.webthickness = webthickness
-        self.interior = None
+        super().__init__(material)
+        self._midpos = midpos
+        self._flangewidth = flangewidth
+        self._flangethickness = flangethickness
+        self._webpos = webpos
+        self._webthickness = webthickness
 
-        self._update_geometry(parent.interior)
+    @property
+    def midpos(self):
+        return self._midpos
+
+    @midpos.setter
+    def midpos(self,midposnew):
+        self._midpos = midposnew
+        self._trigger_update()
+
+    @property
+    def flangewidth(self):
+        return self._flangewidth
+
+    @flangewidth.setter
+    def flangewidth(self, newflangewidth):
+        self._flangewidth = newflangewidth
+        self._trigger_update()
+
+    @property
+    def flangethickness(self):
+        return self._flangethickness
+
+    @flangethickness.setter
+    def flangethickness(self, newflangethickness):
+        self._flangethickness = newflangethickness
+        self._trigger_update()
+
+    @property
+    def webpos(self):
+        return self._webpos
+
+    @webpos.setter
+    def webpos(self, newwebpos):
+        self._webpos = newwebpos
+        self._trigger_update()
+
+    @property
+    def webthickness(self):
+        return self._webthickness
+
+    @webthickness.setter
+    def webthickness(self, newwebthickness):
+        self._webthickness = newwebthickness
+        self._trigger_update()
 
     def webpos_abs(self):
         return self.midpos + (self.webpos - 0.5) * self.flangewidth
@@ -522,47 +575,83 @@ class BoxSpar(_AbstractBaseStructure):
 
     """
 
-    def __init__(self, parent, material, midpos: float, width: float,
+    def __init__(self, material, midpos: float, width: float,
                  flangeheigt, webwidth):
-        super().__init__(parent, material)
-        self.midpos = midpos
-        self.width = width
-        self.interior = None
-        self.flangeheigt = flangeheigt
-        self.webwidth = webwidth
+        super().__init__(material)
+        self._midpos = midpos
+        self._width = width
+        self._flangeheigt = flangeheigt
+        self._webwidth = webwidth
 
-        self._update_geometry(parent.interior)
+        self.interior = None
+
+    @property
+    def midpos(self):
+        return self._midpos
+
+    @midpos.setter
+    def midpos(self, newmidpos):
+        self._midpos = newmidpos
+        self._trigger_update()
+
+    @property
+    def width(self):
+        return self._width
+    
+    @width.setter
+    def width(self, newwidth):
+        self._width = newwidth
+        self._trigger_update()
+
+    @property
+    def flangeheight(self):
+        return self._flangeheigt
+
+    @flangeheight.setter
+    def flangeheight(self, newflangeheight):
+        self._flangeheigt = newflangeheight
+        self._trigger_update()
+
+    @property
+    def webwidth(self):
+        return self._webwidth
+
+    @webwidth.setter
+    def webwidth(self, newwebwidth):
+        self._webwidth = newwebwidth
+        self._trigger_update()
 
     def _update_geometry(self, exterior):
         self.interior = exterior
-        start = self.midpos-self.width/2
-        end = self.midpos+self.width/2
+        start = self._midpos-self._width/2
+        end = self._midpos+self._width/2
 
         abox = shpl_geom.box(start, exterior.bounds[1]-3, end, exterior.bounds[3]+3)
 
         intersection = abox.intersection(shpl_geom.Polygon(exterior))
 
-        for elem in self.cut_elements:
-            if not intersection.intersects(elem):
-                continue
-            raise Exception('Cannot use cut element in cut element')
+        # intersection of cut elements with spar forbidden
+        #for elem in self._cut_elements:
+        #    if not intersection.intersects(elem):
+        #        continue
+        #    raise Exception('Cannot use cut element in cut element')
 
-        anotherbox = shpl_geom.box(start+self.webwidth,
+        anotherbox = shpl_geom.box(start+self._webwidth,
                               exterior.bounds[1]-3,
-                              end-self.webwidth,
+                              end-self._webwidth,
                               exterior.bounds[3]+3)
 
         web = intersection-anotherbox
         flangebox = intersection.intersection(anotherbox)
 
-        flangcutout = shpl_geom.box(start, flangebox.bounds[1]+self.flangeheigt,
-                               end, flangebox.bounds[3]-self.flangeheigt)
+        flangcutout = shpl_geom.box(start, flangebox.bounds[1]+self._flangeheigt,
+                               end, flangebox.bounds[3]-self._flangeheigt)
 
         flange = flangebox-flangcutout
 
         self.geometry = shpl_geom.GeometryCollection([*web.geoms, *flange.geoms])
 
-        self._cut_elements = [abox]
+        #self._cut_elements = [abox]
 
     @property
     def massproperties(self):
@@ -604,26 +693,20 @@ class MassAnalysis:
     
     """
 
-    def __init__(self, parent):
-        self.parent = parent
+    def __init__(self, sectionbase):
+        self.secbase = sectionbase
 
-    #TODO: this can be cleaned up a lot
-    #TODO: maybe calculate more than first child
     @property
     def massproperties(self):
         mass = 0.0
         cg = np.zeros(2)
             
-        current = self.parent
-        while current is not None:
-            if not isinstance(current, SectionBase):
-                cur_cg, cur_mass = current.massproperties
+        for feature in self.secbase.features:
+            cur_cg, cur_mass = feature.massproperties
 
-                mass += cur_mass
-                cg += cur_mass * np.array(cur_cg)
+            mass += cur_mass
+            cg += cur_mass * np.array(cur_cg)
         
-            current = current.child
-
         return cg/mass, mass
 
 
@@ -639,27 +722,30 @@ class LineIdealisation:
         last element of structure feature chain to be analysed
     """
 
-    def __init__(self, parent):
+    def __init__(self, sectionbase):
         
-        self.parent = parent
+        self.secbase = sectionbase
 
         self.geometries = [None, None, None]
 
-        self._chekc()
+        self._check()
 
-        self._update_geometry()
-
-    def _chekc(self):
-
-        self.spar = self.parent
-        self.shell = self.spar.parent
+    def _check(self):
+        
+        try:
+            self.spar = self.secbase.features[1]
+            self.shell = self.secbase.features[0]
+        except:
+            raise Exception('Section structure may consist of shell and spar, nothing else!')
 
         if not isinstance(self.spar, ISpar) or not isinstance(self.shell, Layer):
             raise Exception('Only limited section definition allowed for Idealization.')
 
-
     def _update_geometry(self):
         from shapely import geometry as shpl_geom
+
+        self._check()
+
         bb = self.shell.parent.interior.bounds
         cutbox = shpl_geom.box(bb[0], bb[1], self.spar.webpos_abs(), bb[3])
 
@@ -692,27 +778,31 @@ class LineIdealisation:
 
         return tuple(datagenerator)
 
-    @property
-    def thickness(self):
+    def _thickness(self):
         
         shell_t = self.shell.thickness
         web_t = self.spar.webthickness
 
         return self._generate_datatuple((shell_t, web_t, shell_t))
     
-    @property
-    def youngsmoduli(self):
+    def _youngsmoduli(self):
         shell_E = self.shell.material.E
         web_E = self.spar.material['web'].E
 
         return self._generate_datatuple((shell_E, web_E, shell_E))
 
-    @property
-    def shearmoduli(self):
+    def _shearmoduli(self):
         shell_G = self.shell.material.G
         web_G = self.shell.material.G
 
         return self._generate_datatuple((shell_G, web_G, shell_G))
+
+    def export(self):
+
+        self._check()
+        self._update_geometry()
+
+        return self._thickness(), self._youngsmoduli(), self._shearmoduli()
 
 
 def _oderside(side):
@@ -720,3 +810,60 @@ def _oderside(side):
         return 'right'
     else:
         return 'left'
+
+
+def rework_svg(svg:str, width:float, height:float=100.0, stroke_width:float=None)->str:
+    """Prettify svgs generated by shapely
+    
+    Parameters
+    ----------
+    svg : str
+        svg definitiom
+    width : float
+        with of returned svg
+    height : int, optional
+        height of returned svg (the default is 100)
+    stroke_width : float, optional
+        width of lines in svg (the default is None, which [default_description])
+    
+    Raises
+    ------
+    Exception
+        raised when input svg string is invalid
+    
+    Returns
+    -------
+    str
+        prettified svg string
+    """
+
+    import re
+    
+    if stroke_width is None:
+        
+        search_res = re.search(r'viewBox="((?:-?\d+.\d+\s*){4})"', svg)
+        
+        if search_res is None:
+            raise Exception('Invalid SVG!')
+            
+        bounds = [float(val) for val in search_res.groups()[0].split()]
+        Δy = bounds[3]-bounds[1]
+        Δx = bounds[2]-bounds[0]
+        
+        stroke_width = min(Δx,Δy)/100
+    
+    svg = re.sub(r'width="\d+\.\d+"',
+                 'width="{:.1f}"'.format(width),
+                 svg,
+                 count=1)
+    
+    svg = re.sub(r'height="\d+\.\d+"',
+                 'heigth="{:.1f}"'.format(height),
+                 svg,
+                 count=1)
+    
+    svg = re.sub(r'stroke-width="\d+\.\d+"',
+                 'stroke-width="{:f}"'.format(stroke_width),
+                 svg)
+
+    return svg
