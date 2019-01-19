@@ -36,6 +36,16 @@ def test_structurecreation(airfoilcoords):
     # remove first shell layer
     secbase.remove(outerlayer)
 
+    # remove first shell layer second time -> Exception
+    with pytest.raises(Exception):
+        secbase.remove(outerlayer)
+
+    # add again
+    secbase.insert(0, outerlayer)
+
+    # change thickness of outerlayer
+    outerlayer.thickness = outerlayer.thickness*2
+
     # create a massanalysis
     massana = MassAnalysis(secbase)
     res = massana.massproperties
