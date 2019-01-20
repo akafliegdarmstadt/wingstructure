@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from wingstructure.structure import section, material, MassAnalysis
 
 
@@ -32,7 +33,9 @@ def test_structurecreation(airfoilcoords):
     massana = MassAnalysis(secbase)
     res = massana.massproperties
 
-    assert res is not None
+    print(res)
+    assert np.abs(res[1] - 0.0116) < 0.0001
+    assert all(np.abs(res[0] - np.array([0.494, 0.0268])) < 0.0001)
     # remove I-spar and add boxspar
     secbase.pop()
     boxspar = section.BoxSpar(amat, 0.5, 0.2, 0.01, 0.01)
