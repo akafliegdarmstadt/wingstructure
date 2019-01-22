@@ -14,15 +14,20 @@ pip install wingstructure
 
 wingstructure has three primary functions:
 
- * Object oriented representation of wing geometry
+<table>
+ <tr>
+  <td>Object oriented representation of wing geometry</td>
+  <td>Lift and moment calculation based on multhopp quadrature</td>
+  <td>Mass estimation for wing sections</td>
+ </tr>
+ <tr>
+  <td><img src="examples/wing.png"> </td>
+  <td><img src="examples/Liftdistribution.png"></td>
+  <td><img src="examples/section.svg"></td>
+ </tr>
+ <tr>
+ </tr>
+</table>
 
-![geometry](examples/wing.png)
-
- * Lift and moment calculation based on multhopp quadrature
- * Mass estimation for wing sections
-
- ![section](examples/section.svg)
-
-
- Those are briefly presented in the [Getting Started Guide](https://wingstructure.readthedocs.io/en/latest/usage/quickstart.html).
+Those are briefly presented in the [Getting Started Guide](https://wingstructure.readthedocs.io/en/latest/usage/quickstart.html).
 
