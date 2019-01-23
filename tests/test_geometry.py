@@ -30,7 +30,7 @@ def test_create_from_dict():
     
     wing = geometry.Wing.create_from_dict(wd.wingdict)
 
-    del wing
+    assert wing is not None
 
 
 def test_mac():

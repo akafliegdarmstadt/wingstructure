@@ -33,9 +33,8 @@ def test_structurecreation(airfoilcoords):
     massana = MassAnalysis(secbase)
     res = massana.massproperties
 
-    print(res)
-    assert np.abs(res[1] - 0.0116) < 0.0001
-    assert all(np.abs(res[0] - np.array([0.494, 0.0268])) < 0.0001)
+    assert np.isclose(res[1], 0.011681585464705432)
+    assert all(np.isclose(res[0], [0.49406408, 0.02683857]))
     # remove I-spar and add boxspar
     secbase.pop()
     boxspar = section.BoxSpar(amat, 0.5, 0.2, 0.01, 0.01)
@@ -57,5 +56,5 @@ def test_structurecreation(airfoilcoords):
     # analyse mass again
     res = massana.massproperties
 
-    assert res is not None
-    
+    assert np.isclose(res[1], 0.010542072442709407)
+    assert all(np.isclose(res[0], [0.48091987, 0.02773624]))
