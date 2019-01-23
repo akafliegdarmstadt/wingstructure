@@ -4,11 +4,11 @@ class Crosssection:
     # Crosssection is just for wingstructure (two cells)
     # inputs are tuples (3 arrays per tuple)
     
-    def __init__(self, geometries_orig, youngsmoduli, shearmoduli, thicknesses):
+    def __init__(self, geometries_orig, youngsmoduli, shearmoduli, thickness):
         
         self.youngsmoduli = youngsmoduli
         self.shearmoduli = shearmoduli
-        self.thicknesses = thicknesses
+        self.thickness = thickness
         
         NC = self._normal_center(geometries_orig)
         
@@ -22,7 +22,7 @@ class Crosssection:
     def _normal_center(self, geometries):
         ES_total = np.zeros(2)
         EA_total = 0.0
-        for geometry, E, t in zip(geometries, self.youngsmoduli, self.thicknesses):
+        for geometry, E, t in zip(geometries, self.youngsmoduli, self.thickness):
             ES_total += ES(geometry, E, t)
             EA_total += EA(geometry, E, t)
         NC = np.flip(ES_total/EA_total, 0)
@@ -32,7 +32,7 @@ class Crosssection:
             
         EI_total = np.zeros(3)
         
-        for geometry_nc, E, t in zip(geometries_nc, self.youngsmoduli, self.thicknesses):
+        for geometry_nc, E, t in zip(geometries_nc, self.youngsmoduli, self.thickness):
             # translation to normal center
             EI_total += EI(geometry_nc, E, t)
 
@@ -49,9 +49,9 @@ class Crosssection:
         n_xSQy = []
             
         EI_total = sum([EI(geometry, E, t) for geometry, E, t in
-                    zip(self.geometries, self.youngsmoduli, self.thicknesses)])
+                    zip(self.geometries, self.youngsmoduli, self.thickness)])
             
-        for geometry, E, t in zip(self.geometries, self.youngsmoduli, self.thicknesses):
+        for geometry, E, t in zip(self.geometries, self.youngsmoduli, self.thickness):
             ES = ES_circulate(geometry, E, t)
             n_xSQz_i = -(shearforce[1]/EI_total[0])*ES[0]
             n_xSQy_i = -(shearforce[0]/EI_total[1])*ES[1]
@@ -62,7 +62,7 @@ class Crosssection:
     
     def integrate_sGt(self):
         integrate_sGt_ = []
-        for geometry, G, t in zip(self.geometries, self.shearmoduli, self.thicknesses):
+        for geometry, G, t in zip(self.geometries, self.shearmoduli, self.thickness):
             integrate_sGt_j = 0
             for i in range(0,len(geometry)-1):
                 a = np.array(geometry[i])
@@ -78,7 +78,7 @@ class Crosssection:
         integrate_nQzsGt = []
         integrate_nQysGt = []
         for geometry, G, t, n_xSQz_, n_xSQy_ in \
-            zip(self.geometries, self.shearmoduli, self.thicknesses, n_xSQz, n_xSQy):
+            zip(self.geometries, self.shearmoduli, self.thickness, n_xSQz, n_xSQy):
             integrate_nQzsGt_j = 0
             integrate_nQysGt_j = 0
             for i in range(0,len(geometry)-1):
@@ -118,22 +118,22 @@ class Crosssection:
 
     def shearflow_shearforce(self, shearforce):
         # shearflow due to shearforce
-        # start point: lower intersection left, middle, right
+        # start point: lower intersection left, center, right
         n_xSQz, n_xSQy = self.shearflow_open(shearforce)
         n_xS0_Qz, n_xS0_Qy = self.shearflow_cell(shearforce)
         
         n_xSQz_left = n_xSQz[0] - n_xS0_Qz[0]
-        n_xSQz_middle = n_xSQz[1] - n_xS0_Qz[1] + n_xS0_Qz[0]
+        n_xSQz_center = n_xSQz[1] - n_xS0_Qz[1] + n_xS0_Qz[0]
         n_xSQz_right = n_xSQz[2] + n_xS0_Qz[1]
 
         n_xSQy_left = n_xSQy[0] - n_xS0_Qy[0]
-        n_xSQy_middle = n_xSQy[1] - n_xS0_Qy[1] + n_xS0_Qy[0]
+        n_xSQy_center = n_xSQy[1] - n_xS0_Qy[1] + n_xS0_Qy[0]
         n_xSQy_right = n_xSQy[2] + n_xS0_Qy[1]
         
-        n_xSQz = n_xSQz_left, n_xSQz_middle, n_xSQz_right
-        n_xSQy = n_xSQy_left, n_xSQy_middle, n_xSQy_right
+        n_xSQz = n_xSQz_left, n_xSQz_center, n_xSQz_right
+        n_xSQy = n_xSQy_left, n_xSQy_center, n_xSQy_right
 
-        return n_xSQz, n_xSQy # left, middle, right
+        return n_xSQz, n_xSQy # left, center, right
         
     def moment_shearflow(self, shearforce):
         # moment due to shearflow
@@ -156,7 +156,7 @@ class Crosssection:
             moment_Qz.append(moment_Qz_)
             moment_Qy.append(moment_Qy_)
         
-        return moment_Qz, moment_Qy # left, middle, right
+        return moment_Qz, moment_Qy # left, center, right
     
     def shearcenter(self):
         # shear center due to shearflow referred to normal center
@@ -186,7 +186,7 @@ class Crosssection:
         # counterclockwise
         integrate_sGt_ = self.integrate_sGt()
         a = integrate_sGt_left = integrate_sGt_[0]
-        b = integrate_sGt_middle = integrate_sGt_[1]
+        b = integrate_sGt_center = integrate_sGt_[1]
         c = integrate_sGt_right = integrate_sGt_[2]
         
         polygon_left = np.concatenate((self.geometries[0], np.flip(self.geometries[1],0)))
@@ -207,7 +207,7 @@ class Crosssection:
         # forces = ((N, M_y, M_z))
         EA_total = 0
         EI_total = 0
-        for geometry, E, t in zip(self.geometries, self.youngsmoduli, self.thicknesses):
+        for geometry, E, t in zip(self.geometries, self.youngsmoduli, self.thickness):
             EA_total += EA(geometry, E, t)
             EI_total += EI(geometry, E, t)
 
@@ -265,32 +265,32 @@ class Crosssection:
     
         return stress_total
     
-    def t4_point(self):
-        # t4_point of profile (on chord line)
+    def c4_point(self):
+        # c4_point of profile (on chord line)
         position1 = np.argmin(self.geometries[0][:,0])
         firstpoint = self.geometries[0][position1]
         position2 = np.argmax(self.geometries[2][:,0])
         lastpoint = self.geometries[2][position2]
-        t4_point = (lastpoint - firstpoint)/4 + firstpoint
+        c4_point = (lastpoint - firstpoint)/4 + firstpoint
         
-        return t4_point
+        return c4_point
     
-    def dist_t4_shearcenter(self):
-        # distance between t4_point and shearcenter in y- and z-axis
-        distance = self.shearcenter() - self.t4_point()
+    def dist_c4_shearcenter(self):
+        # distance between c4_point and shearcenter in y- and z-axis
+        distance = self.shearcenter() - self.c4_point()
         return distance   
     
     def transform_shearforce(self, shearforce):
-        # transform shearforce in t4 into shearforce in shearcenter and torsional moment
+        # transform shearforce in c4 into shearforce in shearcenter and torsional moment
         shearforce = transform(np.array((shearforce)), self.Θ)
-        distance = self.dist_t4_shearcenter()
+        distance = self.dist_c4_shearcenter()
         T = np.cross(distance, shearforce)
         
         return shearforce, T
     
     def shearforce_and_torsionalmoment(self, shearforce, torsionalmoment):
         # returns shearforce due to shearcenter and total torsionalmoment
-        # input is shearforce due to t4 point and torsionalmoment
+        # input is shearforce due to c4 point and torsionalmoment
         Q, T_trans = self.transform_shearforce(shearforce)
         T = T_trans + torsionalmoment
         
@@ -299,19 +299,19 @@ class Crosssection:
     def shearflow_total(self, shearforce, torsionalmoment):
         # returns shearflow due to shearforce and torsionalmoment superimposed
         # same direction as shearflow_shearforce
-        # input is shearforce due to t4 point and torsionalmoment
+        # input is shearforce due to c4 point and torsionalmoment
         
         Q, M_T = self.shearforce_and_torsionalmoment(shearforce, torsionalmoment)
         
-        n_xSQz, n_xSQy = self.shearflow_shearforce(Q) # left, middle, right
+        n_xSQz, n_xSQy = self.shearflow_shearforce(Q) # left, center, right
         n_xSQ = np.array(n_xSQz) + np.array(n_xSQy)
         n_xS_tor_left, n_xS_tor_right = self.shearflow_torsion(M_T)
         
         n_xS_left = n_xSQ[0] - n_xS_tor_left
-        n_xS_middle = n_xSQ[1] + n_xS_tor_left - n_xS_tor_right
+        n_xS_center = n_xSQ[1] + n_xS_tor_left - n_xS_tor_right
         n_xS_right = n_xSQ[2] + n_xS_tor_right
         
-        return n_xS_left, n_xS_middle, n_xS_right
+        return n_xS_left, n_xS_center, n_xS_right
     
     def twist(self, shearforce, torsionalmoment):
         # twist is just depending on torsionalmoment; shearforce is due to shearcenter
@@ -319,7 +319,7 @@ class Crosssection:
         
         integrate_sGt_ = self.integrate_sGt()
         a = integrate_sGt_left = integrate_sGt_[0]
-        b = integrate_sGt_middle = integrate_sGt_[1]
+        b = integrate_sGt_center = integrate_sGt_[1]
         c = integrate_sGt_right = integrate_sGt_[2]
         
         polygon_left = np.concatenate((self.geometries[0], np.flip(self.geometries[1],0)))
@@ -338,7 +338,7 @@ class Crosssection:
         # just for pure shear force, no torsional moment
         integral_nsGt = []
         for geometry, G, t, n in \
-        zip(self.geometries, self.shearmoduli, self.thicknesses, shearflow):
+        zip(self.geometries, self.shearmoduli, self.thickness, shearflow):
             integral_nsGt_j = 0
             for i in range(0,len(geometry)-1):
                 a = np.array(geometry[i])
@@ -355,15 +355,15 @@ class Crosssection:
     def plot_around_profil(self, shearflow):
     
         geometry_left = self.geometries[0]
-        geometry_middle = self.geometries[1]
+        geometry_center = self.geometries[1]
         geometry_right = self.geometries[2]
         
         shearflow_left = shearflow[0]
-        shearflow_middle = shearflow[1]
+        shearflow_center = shearflow[1]
         shearflow_right = shearflow[2]
 
         point_profil_left = []
-        point_profil_middle = []
+        point_profil_center = []
         point_profil_right = []
 
         for i in range(0,len(geometry_left)-1):
@@ -378,17 +378,17 @@ class Crosssection:
             point_profil_left_i = normalvec*shearflow_left[i] + m
             point_profil_left.append(point_profil_left_i)
 
-        for i in range(0,len(geometry_middle)-1):
-            a = np.array(geometry_middle[i])
-            b = np.array(geometry_middle[i+1])
+        for i in range(0,len(geometry_center)-1):
+            a = np.array(geometry_center[i])
+            b = np.array(geometry_center[i+1])
 
             m = (a+b)/2
             n = b-a
 
             normalvec = [n[1], -n[0]]/np.linalg.norm(n)
 
-            point_profil_middle_i = normalvec*shearflow_middle[i] + m
-            point_profil_middle.append(point_profil_middle_i)
+            point_profil_center_i = normalvec*shearflow_center[i] + m
+            point_profil_center.append(point_profil_center_i)
             
         for i in range(0,len(geometry_right)-1):
             a = np.array(geometry_right[i])
@@ -403,20 +403,11 @@ class Crosssection:
             point_profil_right.append(point_profil_right_i)
 
         x = np.array(point_profil_left)
-        y = np.array(point_profil_middle)
+        y = np.array(point_profil_center)
         z = np.array(point_profil_right)
 
         return x, y, z
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
     
 def transform(vec, Θ):
     rotmatrix = np.array([[np.cos(Θ), -np.sin(Θ)],
@@ -427,7 +418,7 @@ def transform(vec, Θ):
     return vec_transformed
 
         
-def ES(geometry, youngsmoduli, thicknesses):
+def ES(geometry, youngsmoduli, thickness):
     ES_y = 0
     ES_z = 0
     for i in range(0,len(geometry)-1):
@@ -437,12 +428,12 @@ def ES(geometry, youngsmoduli, thicknesses):
         distance = (a+b)/2
         Δy = distance[0]
         Δz = distance[1]
-        ES_y += youngsmoduli[i]*Δz*Δs*thicknesses[i]
-        ES_z += youngsmoduli[i]*Δy*Δs*thicknesses[i]
+        ES_y += youngsmoduli[i]*Δz*Δs*thickness[i]
+        ES_z += youngsmoduli[i]*Δy*Δs*thickness[i]
     return np.array((ES_y, ES_z))
 
 
-def ES_circulate(geometry, youngsmoduli, thicknesses):
+def ES_circulate(geometry, youngsmoduli, thickness):
     ES_y = 0
     ES_z = 0
     ES_y_vec = []
@@ -454,24 +445,24 @@ def ES_circulate(geometry, youngsmoduli, thicknesses):
         distance = (a+b)/2
         Δy = distance[0]
         Δz = distance[1]
-        ES_y += youngsmoduli[i]*Δz*Δs*thicknesses[i]
-        ES_z += youngsmoduli[i]*Δy*Δs*thicknesses[i]
+        ES_y += youngsmoduli[i]*Δz*Δs*thickness[i]
+        ES_z += youngsmoduli[i]*Δy*Δs*thickness[i]
         ES_y_vec.append(ES_y)
         ES_z_vec.append(ES_z)
     return np.array((ES_y_vec, ES_z_vec))
 
 
-def EA(geometry, youngsmoduli, thicknesses):
+def EA(geometry, youngsmoduli, thickness):
     EA = 0
     for i in range(0,len(geometry)-1):
         a = np.array(geometry[i])
         b = np.array(geometry[i+1])
         Δs = np.linalg.norm(a-b)
-        EA += youngsmoduli[i]*Δs*thicknesses[i]
+        EA += youngsmoduli[i]*Δs*thickness[i]
     return EA
 
 
-def EI(geometry, youngsmoduli, thicknesses):
+def EI(geometry, youngsmoduli, thickness):
     EI_y = 0
     EI_z = 0
     EI_yz = 0
@@ -482,9 +473,9 @@ def EI(geometry, youngsmoduli, thicknesses):
         distance = (a+b)/2
         Δy = distance[0]
         Δz = distance[1]
-        EI_y += youngsmoduli[i]*Δz**2*Δs*thicknesses[i]
-        EI_z += youngsmoduli[i]*Δy**2*Δs*thicknesses[i]
-        EI_yz += -youngsmoduli[i]*Δy*Δz*Δs*thicknesses[i]
+        EI_y += youngsmoduli[i]*Δz**2*Δs*thickness[i]
+        EI_z += youngsmoduli[i]*Δy**2*Δs*thickness[i]
+        EI_yz += -youngsmoduli[i]*Δy*Δz*Δs*thickness[i]
     return np.array((EI_y, EI_z, EI_yz))
 
 
