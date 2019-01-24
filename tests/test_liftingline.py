@@ -5,15 +5,15 @@ def test_multhopp_schlichting():
     Λ = 6 # aspect ratio of wing
     
     b = 15 # m span width
-    cs = [b/Λ]*2 # depth of wing
-    ys = [0,b/2] # section positions
+    cs = np.array([b/Λ]*2) # depth of wing
+    ys = np.array([0,b/2]) # section positions
 
-    αs = [1]*2 # angle of attack
-    dcls = [2*np.pi]*2
+    αs = np.array([1]*2) # angle of attack
+    dcls = np.array([2*np.pi]*2)
 
     # reference result
-    ηs_ref = [0,0.3827,0.7071,0.9239,1]
-    γs_ref = [0.4320,0.4192,0.3710,0.2485,0]
+    ηs_ref = np.array([0,0.3827,0.7071,0.9239,1])
+    γs_ref = np.array([0.4320,0.4192,0.3710,0.2485,0])
 
     # coarse calculation
     M = 7
@@ -27,15 +27,15 @@ def test_multhopp_dcls_nan():
     Λ = 6 # aspect ratio of wing
     
     b = 15 # m span width
-    cs = [b/Λ]*2 # depth of wing
-    ys = [0,b/2] # section positions
+    cs = np.array([b/Λ]*2) # depth of wing
+    ys = np.array([0,b/2]) # section positions
 
-    αs = [1]*2 # angle of attack
+    αs = np.array([1]*2) # angle of attack
     dcls = np.nan
 
     # reference result
-    ηs_ref = [0,0.3827,0.7071,0.9239,1]
-    γs_ref = [0.4320,0.4192,0.3710,0.2485,0]
+    ηs_ref = np.array([0,0.3827,0.7071,0.9239,1])
+    γs_ref = np.array([0.4320,0.4192,0.3710,0.2485,0])
 
     # coarse calculation
     M = 7
@@ -49,15 +49,15 @@ def test_multhopp_no_interp():
     Λ = 6 # aspect ratio of wing
     
     b = 15 # m span width
-    cs = [b/Λ]*2 # depth of wing
-    ys = [0,b/2] # section positions
+    cs = np.array([b/Λ]*2) # depth of wing
+    ys = np.array([0,b/2]) # section positions
 
-    αs = [1]*2 # angle of attack
+    αs = np.array([1]*2) # angle of attack
     dcls = np.nan
 
     # reference result
-    ηs_ref = [0,0.3827,0.7071,0.9239,1]
-    γs_ref = [0.4320,0.4192,0.3710,0.2485,0]
+    ηs_ref = np.array([0,0.3827,0.7071,0.9239,1])
+    γs_ref = np.array([0.4320,0.4192,0.3710,0.2485,0])
 
     # coarse calculation
     M = 7
