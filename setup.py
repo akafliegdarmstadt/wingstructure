@@ -4,8 +4,12 @@ from setuptools import setup, find_packages
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+version = {}
+with open("wingstructure/version.py") as fp:
+    exec(fp.read(), version)
+
 setup(name='wingstructure',
-    version='0.0.5',
+    version=version['__version__'],
     description='A library for structure calculations in airplane wings',
     url='https://github.com/akafliegdarmstadt/wingstructure',
     author='helo',
