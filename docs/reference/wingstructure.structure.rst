@@ -4,6 +4,14 @@ wingstructure.structure package
 Submodules
 ----------
 
+wingstructure.structure.beammechanics module
+--------------------------------------------
+
+.. automodule:: wingstructure.structure.beammechanics
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 wingstructure.structure.internalreactions module
 ------------------------------------------------
 
@@ -24,6 +32,14 @@ wingstructure.structure.material module
 ---------------------------------------
 
 .. automodule:: wingstructure.structure.material
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+wingstructure.structure.polygon module
+--------------------------------------
+
+.. automodule:: wingstructure.structure.polygon
     :members:
     :undoc-members:
     :show-inheritance:

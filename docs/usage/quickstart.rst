@@ -97,7 +97,7 @@ an LiftAnalyis class, which will be used now.
 .. ipython::
    :okwarning:
    
-   In [6]: from wingstructure import analysis
+   In [6]: from wingstructure.aero import analysis
 
    In [7]: liftana = analysis.LiftAnalysis(wing)
 

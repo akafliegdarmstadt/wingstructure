@@ -24,22 +24,24 @@ Example
    foam = Material(1.225)
    sandwich = Material(1.225)
 
-   # Add layers
-   outerlayer = structure.Layer(sectionbase, carbonfabric, 5e-4)
-   core = structure.Layer(outerlayer, foam, 1e-2)
-   innerlayer = structure.Layer(core, carbonfabric, 5e-4)
+   # create layers
+   outerlayer = structure.Layer(carbonfabric, 5e-4)
+   core = structure.Layer(foam, 1e-2)
+   innerlayer = structure.Layer(carbonfabric, 5e-4)
 
-   # Add Spar
-   spar = structure.ISpar(parent=innerlayer, 
-                          material={'flange': carbonfabric, 'web': sandwich},
+   # create Spar
+   spar = structure.ISpar(material={'flange': carbonfabric, 'web': sandwich},
                           midpos=0.45,
                           flangewidth=0.2,
                           flangethickness=0.03,
                           webpos=0.5,
                           webthickness=0.02)
 
+    # add to sectionbase
+    sectionbase.extend([outerlayer, core, innerlayer, spar])
+
    # Analyse Mass
-   massana = structure.MassAnalysis(spar)
+   massana = structure.MassAnalysis(sectionbase)
    cg, mass = massana.massproperties()
 """
 
@@ -47,22 +49,12 @@ from abc import ABC, abstractmethod
 from functools import wraps
 
 import numpy as np
+from collections import namedtuple
 from numpy.linalg import norm
 from shapely import geometry as shpl_geom
 from shapely import ops
 from shapely.algorithms import cga
 
-
-def updatetrigger(f):
-    @wraps
-    def f_withupdate(self, *args, **kwds):
-        res = f(self, *args, **kwds)
-
-        self._trigger_update()
-
-        return res
-
-    return f_withupdate
 
 class _AbstractBaseStructure:
     def __init__(self, material):
@@ -73,20 +65,18 @@ class _AbstractBaseStructure:
 
         self.interior = None
         self.geometry = None
-        self._updatecallbacks = []
+        self._updatecallback = None
     
-    def _add_updatecallback(self, callback):
-        if callback not in self._updatecallbacks:
-            self._updatecallbacks.append(callback)
+    def _set_updatecallback(self, callback):
+        if self._updatecallback is None:
+            self._updatecallback = callback
 
-    def _rm_updatecallback(self, callback):
-        try:
-            self._updatecallbacks.remove(callback)
-        except ValueError:
-            return
+    def _unset_updatecallback(self):
+        self._updatecallback = None
 
     def _trigger_update(self):
-        for callback in self._updatecallbacks:
+        if self._updatecallback is not None:
+            callback = self._updatecallback
             callback(self)
 
     @abstractmethod
@@ -135,6 +125,10 @@ class _AbstractBaseStructure:
     def cut_elements(self):
         return self._cut_elements
     
+    def exportgeometry(self, refpoint=np.zeros(2)):
+        arraygeom = geom2array(self.geometry, refpoint)
+
+        return [arraygeom._replace(material=self.material)]
 
 class SectionBase:
     """Foundation for section's wing structure description
@@ -167,7 +161,7 @@ class SectionBase:
             parentgeometry = self.features[-2].interior
 
         self.features[-1]._update_geometry(parentgeometry)
-        self.features[-1]._add_updatecallback(self._update_callback)
+        self.features[-1]._set_updatecallback(self._update_callback)
 
     def insert(self, index, newfeature):
         self.features.insert(index, newfeature)
@@ -181,12 +175,12 @@ class SectionBase:
         if feature not in self.features:
             raise Exception('No feature {} found.'.format(feature))
 
-        feature._rm_updatecallback(self._update_callback)
+        feature._unset_updatecallback()
         self.features.remove(feature)
 
     def pop(self):
         popped = self.features.pop()
-        popped._rm_updatecallback(self._update_callback)
+        popped._unset_updatecallback()
 
     def _update_callback(self, updated_feature):
         try:
@@ -215,6 +209,15 @@ class SectionBase:
         svg = shply_collection._repr_svg_()
 
         return rework_svg(svg, 1000, 250)
+
+    def exportgeometry(self, refpoint=np.zeros(2)):
+
+        geoms = []
+
+        for feature in self.features:
+            geoms.extend(feature.exportgeometry(refpoint))
+        
+        return geoms
 
 
 class Layer(_AbstractBaseStructure):
@@ -479,8 +482,6 @@ class ISpar(_AbstractBaseStructure):
                                end, exterior.bounds[3]+3)
 
         cutgeom = cutbox.intersection(exterior)
-
-        self.tmp = cutgeom
 
         offsetside = self._get_inside_direction(exterior)
 
@@ -867,3 +868,45 @@ def rework_svg(svg:str, width:float, height:float=100.0, stroke_width:float=None
                  svg)
 
     return svg
+
+
+ArrayStruc = namedtuple('ArrayGeom', ['exterior','interiors','material'])
+
+
+def geom2array(geometry, refpoint=np.zeros(2)):
+    """Helper function to export polygon geometry from shapely to numpy arrays based format
+    
+    Parameters
+    ----------
+    geometry : shapely.Polygon
+        Geometrie to be exported (must be a Polygon)
+    refpoint : np.array, optional
+        reference point (2D), will be substracted from coordinates 
+        (the default is np.zeros(2)
+    
+    Raises
+    ------
+    ValueError
+        Wrong geometry type given..
+    
+    Returns
+    -------
+    ArrayStruc
+        Custom geometry and material container
+    """
+
+    def coordsclockwise(linearring):
+        if cga.signed_area(linearring) > 0.0:
+            return np.array(linearring.coords)
+        else:
+            return np.array(linearring.coords)[::-1]
+
+    if geometry.type != 'Polygon':
+        raise ValueError('Geometry must be of type \'Polygon\'')
+
+    exterior = coordsclockwise(geometry.exterior) - refpoint.flat
+
+    interiors = [coordsclockwise(interior) - refpoint.flat for interior in geometry.interiors]
+
+    return ArrayStruc(exterior, interiors, None)
+    
