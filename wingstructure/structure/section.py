@@ -219,6 +219,9 @@ class SectionBase:
         
         return geoms
 
+    def __getitem__(self, idx):
+        return self.features[idx]
+
 
 class Layer(_AbstractBaseStructure):
     """Layer of constant thickness representation
