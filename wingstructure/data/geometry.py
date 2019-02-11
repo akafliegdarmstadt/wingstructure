@@ -281,7 +281,7 @@ class _BaseWing(object):
         return 2 * max((section.pos.y for section in self.sections))
           
     def chord_at(self, y: float or np.array) -> float:
-        """Calculates the chord depth at given span position"""
+        """Calculates the chord depth at given span position(s)"""
         
         y_positions = [section.pos.y for section in self.sections]
         chord_lengths = [section.chord for section in self.sections]
