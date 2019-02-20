@@ -97,7 +97,7 @@ an LiftAnalyis class, which will be used now.
 .. ipython::
    :okwarning:
    
-   In [6]: from wingstructure import analysis
+   In [6]: from wingstructure.aero import analysis
 
    In [7]: liftana = analysis.LiftAnalysis(wing)
 
@@ -172,18 +172,18 @@ with a spar definition and analyse the section's mass.
 
 .. ipython::
 
-   In [18]: layer = structure.Layer(secbase, basematerial, 3e-3)
+   In [18]: layer = structure.Layer(basematerial, 3e-3)
 
-   In [19]: spar = structure.ISpar(layer,
-      ....:                        {'flange': basematerial,
+   In [19]: spar = structure.ISpar({'flange': basematerial,
       ....:                         'web': basematerial},
       ....:                          0.5,
       ....:                        0.300,
       ....:                        3e-2,
       ....:                        0.8,
       ....:                        1e-3)
+      ....: secbase.extend([layer, spar])
 
-   In [20]: massana = structure.MassAnalysis(spar)
+   In [20]: massana = structure.MassAnalysis(secbase)
       ....: massana.massproperties
 
 For a more complex example have a look at the corresponding

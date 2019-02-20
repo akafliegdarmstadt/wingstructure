@@ -281,7 +281,7 @@ class _BaseWing(object):
         return 2 * max((section.pos.y for section in self.sections))
           
     def chord_at(self, y: float or np.array) -> float:
-        """Calculates the chord depth at given span position"""
+        """Calculates the chord depth at given span position(s)"""
         
         y_positions = [section.pos.y for section in self.sections]
         chord_lengths = [section.chord for section in self.sections]
@@ -430,6 +430,11 @@ class Wing(_BaseWing):
             if flap.y_start <= span_pos <= flap.y_end:
                 return flap.depth_at(span_pos)/self.chord_at(span_pos)
         return 0.0
+
+    def within_flap(self, flapname:str, ys: np.ndarray)->np.ndarray:
+        flap = self.flaps[flapname]
+
+        return np.where((flap.y_start<=np.abs(ys)) & (np.abs(ys)<=flap.y_end), True, False)
         
     def set_airbrake(self, span_pos_start, span_pos_end):
         if span_pos_end > span_pos_start:
