@@ -21,9 +21,9 @@ wingstructure has three primary functions:
   <td>Mass estimation for wing sections</td>
  </tr>
  <tr>
-  <td><img src="examples/wing.png"> </td>
-  <td><img src="examples/Liftdistribution.png"></td>
-  <td><img src="examples/section.svg"></td>
+  <td><a href="https://github.com/akafliegdarmstadt/wingstructure/blob/master/examples/CreateGeometryDict.ipynb"><img src="examples/wing.png"></a> </td>
+  <td><a href="https://github.com/akafliegdarmstadt/wingstructure/blob/master/examples/Analysis_Example.ipynb"><img src="examples/Liftdistribution.png"></a></td>
+  <td><a href="https://github.com/akafliegdarmstadt/wingstructure/blob/master/examples/Section.ipynb"><img src="examples/section.svg"></a></td>
  </tr>
  <tr>
  </tr>
