@@ -372,7 +372,7 @@ class ControlSurface(object):
         """
 
         return np.interp(span_pos, [self.y_start, self.y_end], [self.chord_start, self.chord_end],
-                         right=-1.0, left=-1.0)
+                         right=0.0, left=0.0)
 
     def __lt__(self, other) -> bool:
         return self.y_start < other.y_start

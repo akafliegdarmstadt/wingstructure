@@ -42,13 +42,9 @@ def _solve_multhopp(αs, θs, chords, b, dcls, return_B = False):
 
     B = Bb + np.diag(Bd)
 
-    #print(B)
-
-    #print(B.shape, αs.shape)
     # calculation of local circulation
     γs = np.dot(np.linalg.inv(B), αs)
 
-    #print(γs)
     if return_B:
         return γs, Bb, Bd
     else:
