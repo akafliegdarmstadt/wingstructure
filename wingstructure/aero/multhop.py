@@ -64,8 +64,8 @@ def _multhop_solve(θs, αs, chords, dcls, b, return_αi=False):
 
     B = Bb + np.diag(Bd)
 
-    print(B)
-    
+    #print(B)
+
     # calculation of local circulation
     γs = np.dot(np.linalg.inv(B), αs)
 
@@ -122,7 +122,7 @@ def multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
         M = len(ys)
 
         θs = np.arccos(-2* ys/b)
-        print(θs)
+        #print(θs)
         γs, α_is = _multhop_solve(θs, αs, chords, dcls, b, return_αi=True)
     
     # calculate lift coefficient distritbution
