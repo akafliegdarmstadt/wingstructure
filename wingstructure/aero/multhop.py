@@ -64,7 +64,7 @@ def _multhop_solve(θs, αs, chords, dcls, b, return_αi=False):
 
     B = Bb + np.diag(Bd)
 
-    #print(B)
+    print(θs)
 
     # calculation of local circulation
     γs = np.dot(np.linalg.inv(B), αs)
@@ -207,12 +207,12 @@ def calc_multhoplift(wing, α, controls:dict={}, airbrake:bool=False, airfoil_db
         except:
             raise Exception('control surface "{}" not defined in wing!'.format(name))
             
-        #αs += _calc_flap_Δα(control_surf, ys, η_r)
-        #αs += _calc_flap_Δα(control_surf, ys, η_l)[::-1]
+        αs += _calc_flap_Δα(control_surf, ys, η_r)
+        αs += _calc_flap_Δα(control_surf, ys, η_l)[::-1]
 
     # - airbrake
     if airbrake:
-        #αs += np.where(wing.within_airbrake(ys), -12.0, 0.0)
+        αs += np.where(wing.within_airbrake(ys), -12.0, 0.0)
         pass
 
     # add aoa

@@ -94,7 +94,7 @@ def _calcgridpoints(b:float, Λ:float, M:int = None):
     return θs, calc_ys
 
 def multhopp(αs: np.ndarray, chords: np.ndarray, ys: np.ndarray, dcls: np.ndarray or float=np.nan, M:int=None,
-             mode = 'c_l', interp = True ):
+             mode = 'c_l', interp = True, returnB=False):
     """Use multhopp's quadrature to solve prandtl's lifting line problem
     
     Parameters
@@ -119,6 +119,8 @@ def multhopp(αs: np.ndarray, chords: np.ndarray, ys: np.ndarray, dcls: np.ndarr
     namedtuple
         local lift coefficients, optional circulation distribution
     """
+
+    #print(αs, chords, ys, dcls, M, mode, interp)
 
     if np.isnan(dcls).all():
         dcls = np.array([2*π]*len(ys))
