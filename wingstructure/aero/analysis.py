@@ -61,7 +61,7 @@ class LiftAnalysis(object):
         αs_base1 = np.interp(np.abs(self.calc_ys), wing.ys, wing.twists) # geometric twist
         αs_base2 = np.interp(np.abs(self.calc_ys), wing.ys, aerotwists) # aerodynamic twist
 
-        print('\n\nBase')
+        #print('\n\nBase')
         self.base_liftdist, self.base_lift, self.base_drag = multhopp_(αs_base1-αs_base2)
 
         ## flap distributions
@@ -69,12 +69,13 @@ class LiftAnalysis(object):
         self.flap_lift = {}
         self.flap_drag = {}
         for name, flap in wing.flaps.items():
-            print('\n\nFlap '+name)
+            #print('\n\nFlap '+name)
             αs_flap = self._calculate_flap_α(flap)
+            #print(αs_flap)
             self.flap_liftdist[name], self.flap_lift[name], self.flap_drag[name] = multhopp_(αs_flap)
 
         ## air brake distribution
-        print('\n\nairbrake')
+        #print('\n\nairbrake')
         if wing.airbrake:
             from numpy import abs
             α_ab = np.zeros(M)
@@ -82,7 +83,7 @@ class LiftAnalysis(object):
             self.airbrake_distribution, self.airbrake_lift, self.airbrake_drag = multhopp_(α_ab)
 
         ## lift due to angle of attack
-        print('\n\naoa')
+        #print('\n\naoa')
         α_aoa = np.ones(M)
         self.aoa_c_ls, aoa_C_L, self.aoa_C_Di = multhopp_(α_aoa)
         self.aoa_c_ls /= aoa_C_L
@@ -94,7 +95,7 @@ class LiftAnalysis(object):
             
         for ii, span_pos in enumerate(self.calc_ys):
             
-            if flap.chordpos_at(span_pos) >= 0.0 and span_pos > 0:
+            if flap.length(span_pos) > 0.0 and span_pos > 0:
                 
                 lambda_k = 1-flap.chordpos_at(span_pos)
                 

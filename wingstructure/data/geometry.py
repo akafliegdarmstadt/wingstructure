@@ -374,6 +374,11 @@ class ControlSurface(object):
         return np.interp(span_pos, [self.y_start, self.y_end], [self.chord_start, self.chord_end],
                          right=0.0, left=0.0)
 
+    def length(self, span_pos):
+
+        return np.interp(span_pos, [self.y_start, self.y_end], [self.chord_start, self.chord_end],
+                         right=0.0, left=0.0)
+
     def __lt__(self, other) -> bool:
         return self.y_start < other.y_start
 
@@ -446,7 +451,14 @@ class Wing(_BaseWing):
                 return True
             else:
                 return False
-                
+
+    def within_airbrake(self, span_pos):
+        if self.airbrake == None:
+            return np.full_like(span_pos, False)
+        
+        return (np.abs(span_pos)>=self.airbrake['start']) \
+                  & (np.abs(span_pos)<=self.airbrake['end'])
+
     def plot(self):
         import matplotlib.pyplot as plt
         
