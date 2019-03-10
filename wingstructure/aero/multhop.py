@@ -11,6 +11,24 @@ from collections import namedtuple, defaultdict
 _multhop_result = namedtuple('ext_multhopp_result', 
                               ('c_ls', 'α_is', 'C_L', 'C_Di'))
 
+class MulthopResult:
+    
+    __rmul__ = __mul__
+
+    def __init__(self, c_ls, α_is, C_L, C_Di):
+        self.c_ls = c_ls
+        self.α_is = α_is
+        self.C_L = C_L
+        self.C_Di = C_Di
+    
+    def flip(self):
+        return MulthopResult(self.c_ls[::-1], self.α_is[::-1],
+                             self.C_L, self.C_Di)
+    
+    def __mul__(self, factor):
+        return MulthopResult(self.c_ls * factor, self.α_is * factor,
+                             self.C_L * factor, self.C_Di * abs(factor)) #TODO check C_Di and alpha_i
+
 
 def _prepare_multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
              dcls: np.ndarray, S:float, b:float, M=None):
@@ -134,7 +152,7 @@ def multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
     # calculate induced drag
     C_Di = π*Λ/(M+1) * np.sum( γs * α_is * np.sin(θs))
 
-    return _multhop_result(c_ls, α_is, C_L, C_Di)
+    return MulthopResult(c_ls, α_is, C_L, C_Di)
 
 
 # Helper functions for high level interface
@@ -185,13 +203,39 @@ def _calc_flap_Δα(controlsurface, ys, η):
 
 # Definition of high level functions and analysis object
 
-def calc_multhoplift(wing, α, controls:dict={}, airbrake:bool=False, airfoil_db:dict=None, options:dict=None):
+class Multhop:
+    def __init__(self, wing, ys, airfoil_db):
+        self.wing = wing
+        self.ys = ys
+        self.chords = np.interp(ys, wing.ys, wing.chords)
+        self.dcls = np.full_like(self.chords, 2*π) #TODO make adaptable
+        self.airfoil_db = airfoil_db
     
-    # use default airfoil if no database is set
-    if airfoil_db is None:
-        #warn('No airfoil database defined, using default airfoil.')
-        airfoil_db = defaultdict(AirfoilData)
+    def _multhop(self, αs):
+        return multhop(self.ys, αs, self.chords, self.dcls, A, b, do_prep=False)
 
+    def baselift(self):
+        # geometric and aerodynamic twist
+        αs = _calc_base_α(self.wing, self.ys, self.airfoil_db)
+        return self._multhop(αs)
+
+    def airbrakelift(self):
+        α_ab = np.radians(-12.0)
+        αs = np.where(self.wing.within_airbrake(self.ys), α_ab, 0.0)
+        return self._multhop(αs)
+
+    def controlsurfacelift(self, name, η):
+        try:
+            control_surf = self.wing.flaps[name]
+        except:
+            raise Exception('control surface "{}" is not set in wing definition!'.format(name))
+            
+        αs = _calc_flap_Δα(control_surf, self.ys, np.radians(η))
+        return self._multhop(αs)
+        
+
+def calc_multhoplift(wing, α, controls:dict={}, airbrake:bool=False, airfoil_db:dict=defaultdict(AirfoilData), options:dict=None):
+    
     # calculate grid points
     ys = _calc_gridpoints(wing, 87)
 
@@ -205,7 +249,7 @@ def calc_multhoplift(wing, α, controls:dict={}, airbrake:bool=False, airfoil_db
         try:
             control_surf = wing.flaps[name]
         except:
-            raise Exception('control surface "{}" not defined in wing!'.format(name))
+            raise Exception('control surface "{}" is not set in wing definition!'.format(name))
             
         αs += _calc_flap_Δα(control_surf, ys, np.radians(η_r))
         αs += _calc_flap_Δα(control_surf, ys, np.radians(η_l))[::-1]
@@ -277,11 +321,3 @@ def calc_multhopalpha(wing, C_L:float, controls:dict={}, airbrake:bool=False, ai
     C_Di = baseres.C_Di + fac * aoares.C_Di
 
     return {'ys': ys, 'c_ls':c_ls, 'α': α, 'C_Di':C_Di}
-
-
-class LiftAnalysis:
-    def __init__(self):
-        pass
-    
-    def calculate(self, C_L, controls:dict={}, airbrake:bool=False, airfoil_db:dict=None, options:dict=None):
-        pass
