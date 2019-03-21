@@ -107,4 +107,6 @@ def calculate(wing, α=None, C_L=None, controls={}, airbrake=False, M=None, meth
 
             C_L -= base_res.C_L
 
-            base_res += C_L/aoa.C_L * aoa
+            base_res += (C_L/aoa.C_L) * aoa
+
+        return {'c_ls': base_res.c_ls, 'a_is': base_res.α_is, 'C_L': base_res.C_L, 'a': }
