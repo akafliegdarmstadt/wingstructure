@@ -61,7 +61,6 @@ class LiftAnalysis(object):
         αs_base1 = np.interp(np.abs(self.calc_ys), wing.ys, wing.twists) # geometric twist
         αs_base2 = np.interp(np.abs(self.calc_ys), wing.ys, aerotwists) # aerodynamic twist
 
-        #print('\n\nBase')
         self.base_liftdist, self.base_lift, self.base_drag = multhopp_(αs_base1-αs_base2)
 
         ## flap distributions
@@ -69,13 +68,10 @@ class LiftAnalysis(object):
         self.flap_lift = {}
         self.flap_drag = {}
         for name, flap in wing.flaps.items():
-            #print('\n\nFlap '+name)
             αs_flap = self._calculate_flap_α(flap)
-            #print(αs_flap)
             self.flap_liftdist[name], self.flap_lift[name], self.flap_drag[name] = multhopp_(αs_flap)
 
         ## air brake distribution
-        #print('\n\nairbrake')
         if wing.airbrake:
             from numpy import abs
             α_ab = np.zeros(M)

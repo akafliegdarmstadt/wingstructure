@@ -13,8 +13,6 @@ _multhop_result = namedtuple('ext_multhopp_result',
 
 class MulthopResult:
     
-    __rmul__ = __mul__
-
     def __init__(self, c_ls, α_is, C_L, C_Di):
         self.c_ls = c_ls
         self.α_is = α_is
@@ -28,7 +26,13 @@ class MulthopResult:
     def __mul__(self, factor):
         return MulthopResult(self.c_ls * factor, self.α_is * factor,
                              self.C_L * factor, self.C_Di * abs(factor)) #TODO check C_Di and alpha_i
+    
+    def __add__(self, other):
+        return MulthopResult(self.c_ls+other.c_ls, self.α_is+other.α_is,
+                             self.C_L+other.C_L, self.C_Di+other.C_Di)
 
+    __rmul__ = __mul__
+    __radd__ = __add__
 
 def _prepare_multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
              dcls: np.ndarray, S:float, b:float, M=None):
@@ -81,8 +85,6 @@ def _multhop_solve(θs, αs, chords, dcls, b, return_αi=False):
                             ((M+1)*(np.cos(θn)-np.cos(θv))**2)))
 
     B = Bb + np.diag(Bd)
-
-    print(θs)
 
     # calculation of local circulation
     γs = np.dot(np.linalg.inv(B), αs)
@@ -165,6 +167,9 @@ class AirfoilData(object):
 
 def _calc_gridpoints(wing, M:int):
 
+    if M is None:
+        M = int(round(wing.aspect_ratio)*4-1)
+
     b = wing.span
 
     θs = np.linspace(np.pi/(M+1), M/(M+1)*np.pi, M)
@@ -184,21 +189,27 @@ def _calc_base_α(wing, ys, airfoil_db):
 
     return np.interp(np.abs(ys), wing.ys, αs)
 
+
+def _calc_eta_eff(η_k):
+    return 22.743 * arctan(0.04715 * η_k)
+
+
 def _calc_flap_Δα(controlsurface, ys, η):
 
     λ_k = controlsurface.length(ys)
 
-    λ_k[ys<0.0] = 0.0 # only consider one of two (symmetric wing)
+    λ_k[ys<0.0] = 0.0 # only consider one side (symmetric wing)
 
     η_k = np.full_like(ys, η)
 
-    η_keff = 22.743 * arctan(0.04715 * η_k)
+    η_keff = _calc_eta_eff(η_k)
 
     k = -2/π * (sqrt(λ_k * (1-λ_k)) + arctan(sqrt(λ_k)))
 
     αs = -(0.75 * k - 0.25 * λ_k) * η_keff
 
-    return αs
+    print(η_keff[0])
+    return αs#/η_keff
 
 
 # Definition of high level functions and analysis object
@@ -207,11 +218,13 @@ class Multhop:
     def __init__(self, wing, ys, airfoil_db):
         self.wing = wing
         self.ys = ys
-        self.chords = np.interp(ys, wing.ys, wing.chords)
+        self.chords = np.interp(np.abs(ys), wing.ys, wing.chords)
         self.dcls = np.full_like(self.chords, 2*π) #TODO make adaptable
         self.airfoil_db = airfoil_db
     
     def _multhop(self, αs):
+        A = self.wing.area
+        b = self.wing.span
         return multhop(self.ys, αs, self.chords, self.dcls, A, b, do_prep=False)
 
     def baselift(self):
@@ -226,11 +239,28 @@ class Multhop:
 
     def controlsurfacelift(self, name, η):
         try:
-            control_surf = self.wing.flaps[name]
+            control_surf = self.wing.controls[name]
         except:
             raise Exception('control surface "{}" is not set in wing definition!'.format(name))
-            
+
         αs = _calc_flap_Δα(control_surf, self.ys, np.radians(η))
+
+        return self._multhop(αs)
+
+    def _controlsurfacelift_n(self, name):
+        try:
+            control_surf = self.wing.controls[name]
+        except:
+            raise Exception('control surface "{}" is not set in wing definition!'.format(name))
+
+        η = 1.0
+
+        αs = _calc_flap_Δα(control_surf, self.ys, np.radians(η))/_calc_eta_eff(np.radians(η))
+
+        return self._multhop(αs)
+
+    def aoa(self, α):
+        αs = np.full_like(self.ys, α)
         return self._multhop(αs)
         
 
@@ -247,7 +277,7 @@ def calc_multhoplift(wing, α, controls:dict={}, airbrake:bool=False, airfoil_db
     # control surface parts
     for name, (η_r, η_l) in controls.items():
         try:
-            control_surf = wing.flaps[name]
+            control_surf = wing.controls[name]
         except:
             raise Exception('control surface "{}" is not set in wing definition!'.format(name))
             
@@ -269,7 +299,8 @@ def calc_multhoplift(wing, α, controls:dict={}, airbrake:bool=False, airfoil_db
     dcls = np.full_like(chords, 2*π) #TODO: make adaptable
 
     res = multhop(ys, αs, chords, dcls, wing.area, wing.span, do_prep=False)
-
+    
+    # alpha_i
     return {'ys': ys, 'c_ls':res.c_ls, 'C_L': res.C_L, 'C_Di': res.C_Di}
 
 
@@ -295,7 +326,7 @@ def calc_multhopalpha(wing, C_L:float, controls:dict={}, airbrake:bool=False, ai
     # control surface parts
     for name, (η_r, η_l) in controls.items():
         try:
-            control_surf = wing.flaps[name]
+            control_surf = wing.controls[name]
         except:
             raise Exception('control surface "{}" not defined in wing!'.format(name))
             
