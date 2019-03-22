@@ -223,7 +223,7 @@ class Crosssection:
         
         return deformations
     
-    def deformations_forces(self, forces):
+    def deformation_element(self, forces):
         # deformation in every element due to normalforce and bending moments
         # deformation towards longitudinal axis of beam
         deformation_vec_ = self.deformation_vec(forces)
@@ -248,13 +248,13 @@ class Crosssection:
     
         return deformations_total
     
-    def stress_forces(self, forces):
+    def stress_element(self, forces):
         # stress in every element due to normalforce and bending moments
         # stress towards longitudinal axis of beam
-        deformations_forces_ = self.deformations_forces(forces)
+        deformation_element_ = self.deformation_element(forces)
         stress_total = []
         
-        for deformations, E in zip(deformations_forces_, self.youngsmoduli):
+        for deformations, E in zip(deformation_element_, self.youngsmoduli):
             stress = []
             
             for i in range(len(deformations)):
@@ -278,7 +278,7 @@ class Crosssection:
     def dist_c4_shearcenter(self):
         # distance between c4_point and shearcenter in y- and z-axis
         distance = self.shearcenter() - self.c4_point()
-        return distance   
+        return distance
     
     def transform_shearforce(self, shearforce):
         # transform shearforce in c4 into shearforce in shearcenter and torsional moment
