@@ -1,3 +1,3 @@
 from . import analysis, liftingline, nnliftingline, polarinterp
 
-from .liftingline import AirfoilData, LiftAnalysis
+from .liftingline import AirfoilData, LiftAnalysis, calculate

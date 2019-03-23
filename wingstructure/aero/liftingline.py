@@ -78,7 +78,7 @@ class LiftAnalysis:
         return controllift * fac(deflections[0]) \
                 + controllift.flip() * fac(deflections[1])
 
-def calculate(wing, α=None, C_L=None, controls={}, airbrake=False, M=None, method='multhop', airfoil_db:dict=None):
+def calculate(wing, alpha=None, C_L=None, controls={}, airbrake=False, M=None, method='multhop', airfoil_db:dict=defaultdict(AirfoilData)):
         
         ys = _calc_gridpoints(wing, M)
 
@@ -92,21 +92,25 @@ def calculate(wing, α=None, C_L=None, controls={}, airbrake=False, M=None, meth
         if airbrake:
             base_res += calculator.airbrakelift()
 
-        for name, (η_r, η_l) in controls.item():
+        for name, (η_r, η_l) in controls.items():
             base_res += calculator.controlsurfacelift(name, η_r)
             base_res += calculator.controlsurfacelift(name, η_l).flip()
 
-        if α is not None:
-            base_res += calculator.aoa(α)
+        if alpha is not None:
+            base_res += calculator.aoa(alpha)
 
             if C_L is not None:
                 raise Warning('C_L value is ignored because aoa is defined!')
 
         elif C_L is not None:
-            aoa = calculator.aoa(1)
+            res_aoa = calculator.aoa(1)
 
             C_L -= base_res.C_L
 
-            base_res += (C_L/aoa.C_L) * aoa
+            alpha = C_L/res_aoa.C_L
 
-        return {'c_ls': base_res.c_ls, 'a_is': base_res.α_is, 'C_L': base_res.C_L, 'a': }
+            base_res += alpha * res_aoa
+
+        # TODO C_Mx
+        
+        return {'c_ls': base_res.c_ls, 'a_is': base_res.α_is, 'C_L': base_res.C_L, 'alpha': alpha}
