@@ -67,7 +67,7 @@ def calc_moments(coords, discrete_loads):
 
     # split up loads
     coords_Qs = discrete_loads[:,:3]
-    Qs = discrete_loads[:,3:]  
+    Qs = discrete_loads[:,3:]
     
     # iterate over grid points
     j = 0
