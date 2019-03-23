@@ -36,7 +36,3 @@ def test_multhop_solve():
 
     assert np.isclose(calc_ys[M//2:]/b*2, ηs_ref[:-1], atol=1e-4).all()
     assert np.isclose(γs[M//2:], γs_ref[:-1], atol=1e-4).all()
-
-
-def test_multhop():
-    pass
