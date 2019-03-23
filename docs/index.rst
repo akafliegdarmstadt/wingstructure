@@ -15,6 +15,7 @@ Contents
    :caption: User Documentation
 
    usage/quickstart
+   usage/beam
 
 .. toctree::
    :maxdepth: 2
