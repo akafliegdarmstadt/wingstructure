@@ -78,7 +78,8 @@ class LiftAnalysis:
         return controllift * fac(deflections[0]) \
                 + controllift.flip() * fac(deflections[1])
 
-def calculate(wing, alpha=None, C_L=None, controls={}, airbrake=False, M=None, method='multhop', airfoil_db:dict=defaultdict(AirfoilData)):
+def calculate(wing, alpha=None, C_L=None, controls={}, airbrake=False, M=None, method='multhop', airfoil_db:dict=defaultdict(AirfoilData),
+    calc_cmx=False):
         
         ys = _calc_gridpoints(wing, M)
 
@@ -111,6 +112,14 @@ def calculate(wing, alpha=None, C_L=None, controls={}, airbrake=False, M=None, m
 
             base_res += alpha * res_aoa
 
-        # TODO C_Mx
+        additional = {}
+
+        if calc_cmx:
+            # Moment coefficient in flight direction
+            A = wing.area
+            b = wing.span
+            C_Mx = np.trapz(ys*base_res.c_ls*calculator.chords, ys)/ (A*b)
+
+            additional['C_Mx'] = C_Mx
         
-        return {'c_ls': base_res.c_ls, 'a_is': base_res.α_is, 'C_L': base_res.C_L, 'alpha': alpha}
+        return {'c_ls': base_res.c_ls, 'a_is': base_res.α_is, 'C_L': base_res.C_L, 'alpha': alpha, **additional}
