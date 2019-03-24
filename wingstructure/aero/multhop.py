@@ -165,7 +165,7 @@ class AirfoilData(object):
         self.dif_ca_alpha = dif_ca_alpha
         self.cm0 = cm0
 
-def _calc_gridpoints(wing, M:int):
+def _calc_gridpoints(wing, M:int=None):
 
     if M is None:
         M = int(round(wing.aspect_ratio)*4-1)
@@ -208,8 +208,7 @@ def _calc_flap_Δα(controlsurface, ys, η):
 
     αs = -(0.75 * k - 0.25 * λ_k) * η_keff
 
-    print(η_keff[0])
-    return αs#/η_keff
+    return αs
 
 
 # Definition of high level functions and analysis object
@@ -264,91 +263,3 @@ class Multhop:
         return self._multhop(αs)
         
 
-def calc_multhoplift(wing, α, controls:dict={}, airbrake:bool=False, airfoil_db:dict=defaultdict(AirfoilData), options:dict=None):
-    
-    # calculate grid points
-    ys = _calc_gridpoints(wing, 87)
-
-    # sum up aoa parts
-
-    # geometric and aerodynamic twist
-    αs = _calc_base_α(wing, ys, airfoil_db) 
-
-    # control surface parts
-    for name, (η_r, η_l) in controls.items():
-        try:
-            control_surf = wing.controls[name]
-        except:
-            raise Exception('control surface "{}" is not set in wing definition!'.format(name))
-            
-        αs += _calc_flap_Δα(control_surf, ys, np.radians(η_r))
-        αs += _calc_flap_Δα(control_surf, ys, np.radians(η_l))[::-1]
-
-    # - airbrake
-    if airbrake:
-        α_ab = np.radians(-12.0)
-        αs += np.where(wing.within_airbrake(ys), α_ab, 0.0)
-
-    # add aoa
-    αs += α
-
-    # interpolate chord lengthes
-    chords = np.interp(np.abs(ys), wing.ys, wing.chords)
-
-    # determine lift slope
-    dcls = np.full_like(chords, 2*π) #TODO: make adaptable
-
-    res = multhop(ys, αs, chords, dcls, wing.area, wing.span, do_prep=False)
-    
-    # alpha_i
-    return {'ys': ys, 'c_ls':res.c_ls, 'C_L': res.C_L, 'C_Di': res.C_Di}
-
-
-def calc_multhopalpha(wing, C_L:float, controls:dict={}, airbrake:bool=False, airfoil_db:dict=None, options:dict=None):
-
-    # calculate grid points
-    ys = _calc_gridpoints(wing, 87)
-    
-    # interpolate chord lengthes
-    chords = np.interp(np.abs(ys), wing.ys, wing.chords)
-
-    # determine lift slope
-    dcls = np.full_like(chords, 2*π) #TODO: make adaptable
-
-    # use default airfoil if no database is set
-    if airfoil_db is None:
-        #warn('No airfoil database defined, using default airfoil.')
-        airfoil_db = defaultdict(AirfoilData)
-
-    # geometric and aerodynamic twist
-    αs = _calc_base_α(wing, ys, airfoil_db)
-    
-    # control surface parts
-    for name, (η_r, η_l) in controls.items():
-        try:
-            control_surf = wing.controls[name]
-        except:
-            raise Exception('control surface "{}" not defined in wing!'.format(name))
-            
-        αs += _calc_flap_Δα(control_surf, ys, np.radians(η_r))
-        αs += _calc_flap_Δα(control_surf, ys, np.radians(η_l))[::-1]
-
-    # - airbrake
-    if airbrake:
-        α_ab = np.radians(-12.0)
-        αs += np.where(wing.within_airbrake(ys), α_ab, 0.0)
-
-    multhop_ = lambda αs: multhop(ys, αs, chords, dcls, wing.area, wing.span, do_prep=False)
-
-    baseres = multhop_(αs)
-
-    # add aoa
-    αs_ = np.ones_like(ys)
-    aoares = multhop_(αs_)
-
-    fac = (C_L-baseres.C_L)/aoares.C_L
-    c_ls = baseres.c_ls + fac * aoares.c_ls
-    α = C_L/aoares.C_L
-    C_Di = baseres.C_Di + fac * aoares.C_Di
-
-    return {'ys': ys, 'c_ls':c_ls, 'α': α, 'C_Di':C_Di}
