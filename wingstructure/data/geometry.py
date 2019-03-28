@@ -372,7 +372,12 @@ class ControlSurface(object):
         """
 
         return np.interp(span_pos, [self.y_start, self.y_end], [self.chord_start, self.chord_end],
-                         right=-1.0, left=-1.0)
+                         right=0.0, left=0.0)
+
+    def length(self, span_pos):
+
+        return np.interp(span_pos, [self.y_start, self.y_end], [self.chord_start, self.chord_end],
+                         right=0.0, left=0.0)
 
     def __lt__(self, other) -> bool:
         return self.y_start < other.y_start
@@ -390,7 +395,7 @@ class Wing(_BaseWing):
     """
     def __init__(self, pos:Point=origin, rot:Point=origin):
         super(Wing, self).__init__(pos, rot)
-        self.flaps = dict()
+        self.controls = dict()
         self.airbrake = None
 
     @classmethod
@@ -423,10 +428,10 @@ class Wing(_BaseWing):
 
         flap = ControlSurface(span_pos_start, span_pos_end, depth)
         
-        self.flaps[name] = flap
+        self.controls[name] = flap
     
     def get_flap_depth(self, span_pos: float)->float:
-        for flap in self.flaps.values():
+        for flap in self.controls.values():
             if flap.y_start <= span_pos <= flap.y_end:
                 return flap.depth_at(span_pos)/self.chord_at(span_pos)
         return 0.0
@@ -451,7 +456,14 @@ class Wing(_BaseWing):
                 return True
             else:
                 return False
-                
+
+    def within_airbrake(self, span_pos):
+        if self.airbrake == None:
+            return np.full_like(span_pos, False)
+        
+        return (np.abs(span_pos)>=self.airbrake['start']) \
+                  & (np.abs(span_pos)<=self.airbrake['end'])
+
     def plot(self):
         import matplotlib.pyplot as plt
         
@@ -481,7 +493,7 @@ class Wing(_BaseWing):
         plt.plot(y_positions, -1*np.array(x_positions)-np.array(chord_lengths), 'b')
         
         # draw flaps
-        for name, aflap in self.flaps.items():
+        for name, aflap in self.controls.items():
             y_pos = np.array([aflap.y_start, aflap.y_end])
             y_pos = np.concatenate([y_pos,
                                     y_positions[(y_positions>aflap.y_start) &

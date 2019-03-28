@@ -79,6 +79,7 @@ class LiftAnalysis(object):
             self.airbrake_distribution, self.airbrake_lift, self.airbrake_drag = multhopp_(α_ab)
 
         ## lift due to angle of attack
+        #print('\n\naoa')
         α_aoa = np.ones(M)
         self.aoa_c_ls, aoa_C_L, self.aoa_C_Di = multhopp_(α_aoa)
         self.aoa_c_ls /= aoa_C_L
@@ -90,7 +91,7 @@ class LiftAnalysis(object):
             
         for ii, span_pos in enumerate(self.calc_ys):
             
-            if flap.chordpos_at(span_pos) >= 0.0 and span_pos > 0:
+            if flap.length(span_pos) > 0.0 and span_pos > 0:
                 
                 lambda_k = 1-flap.chordpos_at(span_pos)
                 
