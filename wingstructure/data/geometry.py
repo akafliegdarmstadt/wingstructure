@@ -129,8 +129,10 @@ class Section(object):
         return self.pos.y == other.pos.y
 
     def __repr__(self):
-        return 'sec: {{leading edge: {}, chord: {}}}'.format(self.pos,
-                                                             self.chord)
+        return 'Section(pos={}, chord={}, twist={}, airfoil={})'.format(self.pos,
+                                                                        self.chord,
+                                                                        self.twist,
+                                                                        self.airfoil)
 
 
 class _BaseWing(object):
