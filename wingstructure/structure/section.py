@@ -132,6 +132,8 @@ class _AbstractBaseStructure:
 
 class SectionBase:
     """Foundation for section's wing structure description
+
+    Implements a list like interface for the assembling of wing section's interior.
     
     Parameters
     ----------
@@ -228,8 +230,6 @@ class Layer(_AbstractBaseStructure):
     
     Parameters
     ----------
-    parent : 
-        Structure Element
     material :
         Material definition
     thickness : float
@@ -313,8 +313,6 @@ class Reinforcement(Layer):
     
     Parameters
     ----------
-    parent :
-        Parent structure Element
     material :
         Material Defintion
     thickness :
@@ -388,8 +386,6 @@ class ISpar(_AbstractBaseStructure):
     
     Parameters
     ----------
-    parent :
-        Parent structure element.
     material :
         Material defintion.
     midpos : float
@@ -558,8 +554,6 @@ class BoxSpar(_AbstractBaseStructure):
     
     Parameters
     ----------
-    parent :
-        Parent structure element.
     material :
         Material defintion.
     midpos : float
@@ -692,8 +686,8 @@ class MassAnalysis:
     
     Parameters
     ----------
-    parent
-        last element of structure elment chain to be analysed
+    sectionbase
+        section definiton to be analyzed
     
     """
 
@@ -722,8 +716,8 @@ class LineIdealisation:
 
     Parameters
     ----------
-    parent
-        last element of structure feature chain to be analysed
+    sectionbase
+        section definiton to be analyzed
     """
 
     def __init__(self, sectionbase):
