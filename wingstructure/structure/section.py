@@ -899,7 +899,7 @@ def geom2array(geometry, refpoint=np.zeros(2)):
     """
 
     def coordsclockwise(linearring):
-        if cga.signed_area(linearring) > 0.0:
+        if cga.signed_area(linearring) < 0.0:
             return np.array(linearring.coords)
         else:
             return np.array(linearring.coords)[::-1]

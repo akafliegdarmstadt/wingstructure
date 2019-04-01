@@ -8,7 +8,7 @@ module the class *StructuralAnalysis* is also included.
 
 .. HINT::
    All coordinate sequences passed directly to the low level functions (not the class)
-   have to be defined in a clockwise manner.
+   have to be defined in a clockwise manner (negative mathematical direction).
 """
 
 import numpy as np
@@ -165,7 +165,7 @@ def _calcgeom(geom, property_functions):
     """
 
     properties = {propfun:None for propfun in property_functions}
-
+  
     isexterior = True
     for outline in (geom.exterior, *geom.interiors):
         if isexterior:
@@ -218,7 +218,7 @@ class StructuralAnalysis:
             weighted_area_ += geom.material.E*area
             weighted_staticmoment_ += geom.material.E*staticmoment
 
-        self.nc = weighted_staticmoment_/weighted_area_        
+        self.nc = (weighted_staticmoment_/weighted_area_)[::-1]  
 
         # calculate properties regarding normal center
 
