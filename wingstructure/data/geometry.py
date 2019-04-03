@@ -438,10 +438,10 @@ class Wing(_BaseWing):
                 return flap.depth_at(span_pos)/self.chord_at(span_pos)
         return 0.0
 
-    def within_flap(self, flapname:str, ys: np.ndarray)->np.ndarray:
-        flap = self.flaps[flapname]
+    def within_control(self, flapname:str, ys: np.ndarray)->np.ndarray:
+        control = self.controls[flapname]
 
-        return np.where((flap.y_start<=np.abs(ys)) & (np.abs(ys)<=flap.y_end), True, False)
+        return np.where((control.y_start<=np.abs(ys)) & (np.abs(ys)<=control.y_end), True, False)
         
     def set_airbrake(self, span_pos_start, span_pos_end):
         if span_pos_end > span_pos_start:
