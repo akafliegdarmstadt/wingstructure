@@ -179,52 +179,31 @@ def _calcgeom(geom, property_functions):
     return [properties[propfun] for propfun in property_functions]
 
 
-class StructuralAnalysis:
-    """Class for structural analysis of Sections or Features
+def calc_neutralcenter(structure):
+    area = 0
 
-    Parameters
-    ----------
-    structure: SectionBase or Feature
-        structure element to be analysed
+    weighted_area_ = 0
+    weighted_staticmoment_ = np.zeros((2))
 
-    Attributes
-    ----------
-    nc : np.array
-        Neutralcenter of structure, available after calling update
-    area : float
-        Overall Area of structure, available after calling update
-    bendingstiffness : np.array
-        bending stiffness of structure, available after calling update
-    """
+    for geom in structure.exportgeometry():
+        tmparea, staticmoment = _calcgeom(geom, [calcarea, calcstaticmoments])
+        area += tmparea
+        weighted_area_ += geom.material.E*tmparea
+        weighted_staticmoment_ += geom.material.E*staticmoment
 
-    def __init__(self, structure):
-        self._structure = structure
-        self.nc = None
-        self.area = None
-        self.bendingstiffness = None
+    nc = (weighted_staticmoment_/weighted_area_)[::-1]
 
-    def update(self):
-        # calculate normal center
+    return nc
 
-        self.area = 0
+def calc_bendingstiffness(structure, ref_pt=None):
 
-        weighted_area_ = 0
-        weighted_staticmoment_ = np.zeros((2))
+    ref_pt = calc_neutralcenter(structure)
 
-        for geom in self._structure.exportgeometry():
-            area, staticmoment = _calcgeom(geom, [calcarea, calcstaticmoments])
+    bendingstiffness = np.zeros(3)
 
-            self.area += area
-            weighted_area_ += geom.material.E*area
-            weighted_staticmoment_ += geom.material.E*staticmoment
+    for geom in structure.exportgeometry(ref_pt):
+        inertiamoment = _calcgeom(geom, [calcinertiamoments])[0]
 
-        self.nc = (weighted_staticmoment_/weighted_area_)[::-1]  
+        bendingstiffness += inertiamoment*geom.material.E
 
-        # calculate properties regarding normal center
-
-        self.bendingstiffness = np.zeros(3)
-
-        for geom in self._structure.exportgeometry(self.nc):
-            inertiamoment = _calcgeom(geom, [calcinertiamoments])[0]
-
-            self.bendingstiffness += inertiamoment*geom.material.E
+    return bendingstiffness

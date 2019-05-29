@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
-from wingstructure.structure import section, material, MassAnalysis
+from wingstructure.structure import section, material
+from wingstructure.structure.section import MassAnalysis
 
 
 @pytest.fixture
@@ -25,20 +26,6 @@ def test_structurecreation(airfoilcoords):
     # add shell layers to secbase
     secbase.extend([outerlayer, innerlayer])
 
-    # create I-spar and add to secbase
-    ispar = section.ISpar(amat, 0.5, 0.2, 0.01, 0.5, 0.01)
-    secbase.append(ispar)
-
-    # create a massanalysis
-    massana = MassAnalysis(secbase)
-    res = massana.massproperties
-
-    assert np.isclose(res[1], 0.011681585464705432)
-    assert all(np.isclose(res[0], [0.49406408, 0.02683857]))
-    # remove I-spar and add boxspar
-    secbase.pop()
-    boxspar = section.BoxSpar(amat, 0.5, 0.2, 0.01, 0.01)
-    secbase.append(boxspar)
 
     # remove first shell layer
     secbase.remove(outerlayer)
@@ -52,9 +39,3 @@ def test_structurecreation(airfoilcoords):
 
     # change thickness of outerlayer
     outerlayer.thickness = outerlayer.thickness*2
-
-    # analyse mass again
-    res = massana.massproperties
-
-    assert np.isclose(res[1], 0.010542072442709407)
-    assert all(np.isclose(res[0], [0.48091987, 0.02773624]))

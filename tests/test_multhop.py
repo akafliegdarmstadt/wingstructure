@@ -48,8 +48,8 @@ def test_calc_gridpoints():
 
     from wingstructure.aero.multhop import _calc_gridpoints
     
-    Wing = namedtuple('Wing', ['span', 'aspect_ratio'])
-    wing = Wing(span=9, aspect_ratio=15)
+    Wing = namedtuple('Wing', ['span', 'aspectratio'])
+    wing = Wing(span=9, aspectratio=15)
     
     # span
     b = wing.span
@@ -87,12 +87,12 @@ def test_control_surface_Δα():
     
     from wingstructure.aero.multhop import _calc_flap_Δα
 
-    ControlSurface = namedtuple('ControlSurface', ['length'])
+    ControlSurface = namedtuple('ControlSurface', ['pos1', 'pos2', 'depth1', 'depth2'])
 
     length = lambda span_pos: np.interp(span_pos, [3.5, 5.5], [0.8, 0.9],
                 right=0.0, left=0.0)
 
-    cs = ControlSurface(length)
+    cs = ControlSurface(3.5, 5.5, 0.8, 0.9)
 
     res = _calc_flap_Δα(cs, np.array([1.0, 2.5, 3.5, 5.0, 7.5]), 5)
 

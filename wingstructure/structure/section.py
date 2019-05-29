@@ -55,80 +55,8 @@ from shapely import geometry as shpl_geom
 from shapely import ops
 from shapely.algorithms import cga
 
+from .section_helper import _get_inside_direction, _create_offset_box, _updatedecorator, _refine_interior
 
-class _AbstractBaseStructure:
-    def __init__(self, material):
-        super().__init__()
-        self.geometry = None  
-        self.material = material
-        self._cut_elements = []
-
-        self.interior = None
-        self.geometry = None
-        self._updatecallback = None
-    
-    def _set_updatecallback(self, callback):
-        if self._updatecallback is None:
-            self._updatecallback = callback
-
-    def _unset_updatecallback(self):
-        self._updatecallback = None
-
-    def _trigger_update(self):
-        if self._updatecallback is not None:
-            callback = self._updatecallback
-            callback(self)
-
-    @abstractmethod
-    def _update_geometry(self, exterior):
-        pass
-
-    @property
-    def massproperties(self):
-        return (self.geometry.centroid, self.geometry.area*self.material.ρ)
-
-    def area(self):
-        return self.geometry.area
-
-    def _get_inside_direction(self, linearring):
-        """Gets the inside direction for parallel offset (left or right)
-        from signed area of geometry"""
-        
-        if cga.signed_area(linearring) > 0:
-            return 'left'
-        else:
-            return 'right'
-    
-    def _create_offset_box(self, line, thickness, side, bevel=0.0,
-                           symmetric=False):
-        
-        offsetline = line.parallel_offset(thickness, side=side)
-        
-        if symmetric:
-            offsetline2 = line.parallel_offset(thickness, side=_oderside(side))
-            line = offsetline2
-
-        if bevel > 0.0:
-            
-            raise Exception('Beveling not yet implemented')
-        
-        if side == 'left':
-            connect1 = shpl_geom.LineString((line.coords[-1], offsetline.coords[-1]))
-            connect2 = shpl_geom.LineString((line.coords[0], offsetline.coords[0]))
-            return shpl_geom.Polygon(ops.linemerge((line, connect1, offsetline, connect2)))
-        else:
-            connect1 = shpl_geom.LineString((line.coords[-1],offsetline.coords[0]))
-            connect2 = shpl_geom.LineString((line.coords[0], offsetline.coords[-1]))
-            return shpl_geom.Polygon(ops.linemerge((offsetline,connect1,line,connect2)))
-
-    @property
-    def cut_elements(self):
-        return self._cut_elements
-    
-    def exportgeometry(self, refpoint=np.zeros(2)):
-        arraygeom = geom2array(self.geometry, refpoint)
-
-        return [arraygeom._replace(material=self.material)]
 
 class SectionBase:
     """Foundation for section's wing structure description
@@ -149,64 +77,61 @@ class SectionBase:
 
     def __init__(self, airfoil_coordinates):
         self._geometry = shpl_geom.LinearRing(airfoil_coordinates)
-        self.features = []
-    
-    def append(self, newfeature):
-        if newfeature in self.features:
-            raise Exception('Can append feature {} only once!'.format(newfeature))
-        
-        self.features.append(newfeature)
+        self._features = []
+        self._featuregeometries = []
 
-        if len(self.features) == 1:
-            parentgeometry = self._geometry
-        else:
-            parentgeometry = self.features[-2].interior
+    @_updatedecorator
+    def append(self, featuredef):
+        self._features.append(featuredef)
 
-        self.features[-1]._update_geometry(parentgeometry)
-        self.features[-1]._set_updatecallback(self._update_callback)
-
+    @_updatedecorator
     def insert(self, index, newfeature):
-        self.features.insert(index, newfeature)
-        self._update(index)
+        self._features.insert(index, newfeature)
 
-    def extend(self, newfeatures):
-        for newfeature in newfeatures:
-            self.append(newfeature)
+    @_updatedecorator
+    def extend(self, featuredefs):
+        for featuredef in featuredefs:
+            self.append(featuredef)
 
-    def remove(self, feature):
-        if feature not in self.features:
-            raise Exception('No feature {} found.'.format(feature))
+    @_updatedecorator
+    def remove(self, featuredef):
+        if featuredef not in self._features:
+            raise Exception('No feature {} found.'.format(featuredef))
 
-        feature._unset_updatecallback()
-        self.features.remove(feature)
+        self._features.remove(featuredef)
 
+    @_updatedecorator
     def pop(self):
-        popped = self.features.pop()
-        popped._unset_updatecallback()
+        self._features.pop()
 
     def _update_callback(self, updated_feature):
         try:
-            first_idx = self.features.index(updated_feature) #TODO: Error handling
+            first_idx = self._features.index(updated_feature) #TODO: Error handling
         except ValueError:
             raise ValueError('Feature {} not in {}s features.'.format(updated_feature, self))
 
-        self._update(first_idx)
+        self._update()
     
-    def _update(self, first_idx):
+    def _update(self):
 
-        last_interior = self.features[first_idx-1].interior if first_idx>0 else self._geometry
+        # reset geometries
+        self._featuregeometries = []
 
-        for feature in self.features[first_idx:]:
+        self.tmp = []
+
+        exterior = self._geometry
+
+        for feature in self._features:
+            tmp, tmp_geometry = feature._calculate_geometry(exterior)
             
-            feature._update_geometry(last_interior)
+            self.tmp.append(tmp)
 
-            last_interior = feature.interior
+            exterior=tmp
+            self._featuregeometries.append(tmp_geometry)
     
     def _repr_svg_(self):
- 
-        allgeom = [feature.geometry for feature in self.features]
 
-        shply_collection = shpl_geom.GeometryCollection([self._geometry, *allgeom])
+        shply_collection = shpl_geom.GeometryCollection([self._geometry, *self._featuregeometries])
 
         svg = shply_collection._repr_svg_()
 
@@ -216,16 +141,16 @@ class SectionBase:
 
         geoms = []
 
-        for feature in self.features:
-            geoms.extend(feature.exportgeometry(refpoint))
+        for feature, geometry in zip(self._features, self._featuregeometries):
+            geoms.extend(exportstructure(geometry, feature.material, refpoint))
         
         return geoms
 
     def __getitem__(self, idx):
-        return self.features[idx]
+        return self._features[idx] # TODO rework
 
 
-class Layer(_AbstractBaseStructure):
+class Layer:
     """Layer of constant thickness representation
     
     Parameters
@@ -243,30 +168,27 @@ class Layer(_AbstractBaseStructure):
     """
 
     def __init__(self, material, thickness=0.0):
-        super().__init__(material)
-        self._thickness = thickness
+        self.material = material
+        self.thickness = thickness
 
-        self.exterior = None
+    def _calculate_geometry(self, exterior):
 
-    def _update_geometry(self, exterior):
-        
-        self.exterior = None
+        inside_direction = _get_inside_direction(exterior)
 
-        inside_direction = self._get_inside_direction(exterior)
+        interior = exterior.parallel_offset(self.thickness, side=inside_direction)
 
-        self.interior = exterior.parallel_offset(self._thickness,
-                                                 side=inside_direction)
-
-        if self.interior.type == 'MultiLineString':
-                    self.interior = shpl_geom.LinearRing(self.interior.geoms[0])
+        if interior.type == 'MultiLineString':
+            interior = shpl_geom.LinearRing(interior.geoms[0])
         else:
-            self.interior = shpl_geom.LinearRing(self.interior)
+            interior = shpl_geom.LinearRing(interior)
 
-        self.geometry = shpl_geom.Polygon(exterior)-shpl_geom.Polygon(self.interior)
+        geometry = shpl_geom.Polygon(exterior)-shpl_geom.Polygon(interior)
+
+        return interior, geometry
 
     def _centerline(self):
 
-        inside_direction = self._get_inside_direction(self.exterior)
+        inside_direction = _get_inside_direction(self.exterior)
 
         centerline = self.exterior.parallel_offset(self._thickness/2.0,
                                                     side=inside_direction)
@@ -297,15 +219,9 @@ class Layer(_AbstractBaseStructure):
 
         return shpl_geom.Polygon(cline).area
 
-    @property
-    def thickness(self):
-        return self._thickness
 
-    @thickness.setter
-    def thickness(self, thickness):
-        self._thickness = thickness
-
-        self._trigger_update()
+class CompositeLayer(Layer):
+    pass #TODO: implement
 
 
 class Reinforcement(Layer):
@@ -328,358 +244,37 @@ class Reinforcement(Layer):
     """
 
     def __init__(self, material, thickness=0.0, limits=None):
-        _AbstractBaseStructure.__init__(self, material)  #TODO fix
-        self._thickness = thickness
-        self._limits = limits
-
-        self.interior = None
+        super().__init__(material, thickness)
+        self._limits = np.array(limits)
     
-    def _update_geometry(self, exterior):
+    def _calculate_geometry(self, exterior):
+        
         limited_box = shpl_geom.box(self._limits[0], exterior.bounds[1]*1.1,
                                     self._limits[1], exterior.bounds[3]*1.1)
 
         intersection = limited_box.intersection(exterior)
 
-        side = self._get_inside_direction(exterior)
+        side = _get_inside_direction(exterior)
 
         tmp_geometries = []
 
         tmp_interior = shpl_geom.Polygon(exterior)
 
         for ageo in intersection.geoms:
-            tmp_geometry = self._create_offset_box(ageo, self._thickness, side, 
-                                                   symmetric=False)
+            tmp_geometry = _create_offset_box(ageo, self.thickness, side, 
+                                              symmetric=False)
             tmp_interior -= tmp_geometry
             tmp_geometries.append(tmp_geometry)
 
-        self.geometry = shpl_geom.GeometryCollection(tmp_geometries)
+        geometry = shpl_geom.GeometryCollection(tmp_geometries)
 
-        self.interior = shpl_geom.LinearRing(tmp_interior.exterior)
-        self._refine_interior()
-
-    def _refine_interior(self):
+        interior = shpl_geom.LinearRing(tmp_interior.exterior)
         
-        if self.interior.type == 'MultiLineString':
-            self.interior = shpl_geom.LinearRing(self.interior.geoms[0])
-        else:
-            self.interior = shpl_geom.LinearRing(self.interior)
+        return _refine_interior(interior), geometry
 
-        # find bugs in interior and remove them
-        pts = np.array(self.interior)[:-1, :]
-        del_pts = []
+    def exportgeometry(self, refpoint=np.zeros(2)):
 
-        for ii in range(len(pts)):
-            
-            vec1 = pts[ii]-pts[ii-1]
-            vec2 = pts[(ii+1) % len(pts)]-pts[ii]
-            
-            if(np.linalg.norm(vec1/norm(vec1)+vec2/norm(vec2)) < 1e-3):
-                del_pts.append(ii)
-
-        pts2 = np.delete(pts, del_pts, axis=0)
-        
-        self.interior = shpl_geom.LinearRing(pts2)
-
-
-class ISpar(_AbstractBaseStructure):
-    """Representation for I or double-T Spar
-    
-    Parameters
-    ----------
-    material :
-        Material defintion.
-    midpos : float
-        Chord position of spar (absolute)
-    flangewidth : float
-        width of flanges
-    flangethickness : float
-        thickness of flanges (symmetric)
-    webpos : float
-        position of web at flange (relative, 0 - left, 1 - right)
-    webthickness : float
-        thickness of wepropertyb
-
-
-    Attributes
-    ----------
-    interior : 
-        shapely geometry representation of interior
-    
-    Raises
-    ------
-    Exception
-        when geometry cannot be created with choosen parameters
-
-    """
-
-    def __init__(self, material, midpos: float, flangewidth: float,
-                 flangethickness: float, webpos: float, webthickness: float):
-        super().__init__(material)
-        self._midpos = midpos
-        self._flangewidth = flangewidth
-        self._flangethickness = flangethickness
-        self._webpos = webpos
-        self._webthickness = webthickness
-
-    @property
-    def midpos(self):
-        return self._midpos
-
-    @midpos.setter
-    def midpos(self,midposnew):
-        self._midpos = midposnew
-        self._trigger_update()
-
-    @property
-    def flangewidth(self):
-        return self._flangewidth
-
-    @flangewidth.setter
-    def flangewidth(self, newflangewidth):
-        self._flangewidth = newflangewidth
-        self._trigger_update()
-
-    @property
-    def flangethickness(self):
-        return self._flangethickness
-
-    @flangethickness.setter
-    def flangethickness(self, newflangethickness):
-        self._flangethickness = newflangethickness
-        self._trigger_update()
-
-    @property
-    def webpos(self):
-        return self._webpos
-
-    @webpos.setter
-    def webpos(self, newwebpos):
-        self._webpos = newwebpos
-        self._trigger_update()
-
-    @property
-    def webthickness(self):
-        return self._webthickness
-
-    @webthickness.setter
-    def webthickness(self, newwebthickness):
-        self._webthickness = newwebthickness
-        self._trigger_update()
-
-    def webpos_abs(self):
-        return self.midpos + (self.webpos - 0.5) * self.flangewidth
-
-    def _update_geometry(self, exterior):
-        self.interior = exterior
-        start = self.midpos - self.flangewidth/2
-        end = self.midpos + self.flangewidth/2
-
-        if start<exterior.bounds[0] or end > exterior.bounds[2]:
-            raise Exception('flange width is too large')
-
-        cutbox = shpl_geom.box(start, exterior.bounds[1]-3,
-                               end, exterior.bounds[3]+3)
-
-        cutgeom = cutbox.intersection(exterior)
-
-        offsetside = self._get_inside_direction(exterior)
-
-        flangegeoms = []
-        offsetlines = []
-
-        for cutline in cutgeom.geoms:
-            flangegeoms.append(
-                self._create_offset_box(cutline, self.flangethickness,
-                                        offsetside)
-            )
-            offsetline = cutline.parallel_offset(self.flangethickness,
-                                                 side=offsetside)
-            offsetlines.append(offsetline)
-
-        webpos_abs = start + self.webpos * self.flangewidth
-
-        line1 = offsetlines[0]
-        line2 = offsetlines[1]
-        xdist1 = abs(line1.coords[0][0]-line2.coords[-1][0])
-        xdist2 = abs(line1.coords[0][0]-line2.coords[0][0])
-
-        if xdist1 < xdist2:
-            webbox = shpl_geom.LinearRing([*line2.coords, *line1.coords])
-        else:
-            webbox = shpl_geom.LinearRing([*line1.coords[::-1], *line2.coords])
-
-        webstart = webpos_abs - self.webthickness/2
-        webend = webpos_abs + self.webthickness/2
-
-        webcutbox = shpl_geom.box(webstart, exterior.bounds[1]-3,
-                             webend,  exterior.bounds[1]+3)
-
-        web = webcutbox.intersection(shpl_geom.Polygon(webbox))
-
-        self.geometry = shpl_geom.GeometryCollection([*flangegeoms, web])
-
-        self._cut_elements = [cutgeom]
-
-    @property
-    def massproperties(self):
-        if type(self.material) is dict:
-            try:
-                webmaterial = self.material['web']
-                flangematerial = self.material['flange']
-            except:
-                raise Exception('wrong material defintion')
-
-            mass = 0.0
-            cg = np.zeros(2)
-
-            for ii, geom in enumerate(self.geometry.geoms):
-                if ii < 2:
-                    material = flangematerial
-                else:
-                    material = webmaterial
-                
-                tmpmass = geom.area*material.ρ 
-                mass += tmpmass
-                cg += np.array(geom.centroid) * tmpmass
-
-            cg /= mass
-
-            return shpl_geom.Point(cg), mass
-        else:
-            return super().massproperties
-
-
-class BoxSpar(_AbstractBaseStructure):
-    """Representation for box spar
-    
-    Parameters
-    ----------
-    material :
-        Material defintion.
-    midpos : float
-        Chord position of spar (absolute)
-    width : float
-        width of spar
-    flangeheight : float
-        thickness of flanges (symmetric)
-    webwidth : float
-        thickness of web
-
-
-    Attributes
-    ----------
-    interior : 
-        shapely geometry representation of interior
-
-    """
-
-    def __init__(self, material, midpos: float, width: float,
-                 flangeheigt, webwidth):
-        super().__init__(material)
-        self._midpos = midpos
-        self._width = width
-        self._flangeheigt = flangeheigt
-        self._webwidth = webwidth
-
-        self.interior = None
-
-    @property
-    def midpos(self):
-        return self._midpos
-
-    @midpos.setter
-    def midpos(self, newmidpos):
-        self._midpos = newmidpos
-        self._trigger_update()
-
-    @property
-    def width(self):
-        return self._width
-    
-    @width.setter
-    def width(self, newwidth):
-        self._width = newwidth
-        self._trigger_update()
-
-    @property
-    def flangeheight(self):
-        return self._flangeheigt
-
-    @flangeheight.setter
-    def flangeheight(self, newflangeheight):
-        self._flangeheigt = newflangeheight
-        self._trigger_update()
-
-    @property
-    def webwidth(self):
-        return self._webwidth
-
-    @webwidth.setter
-    def webwidth(self, newwebwidth):
-        self._webwidth = newwebwidth
-        self._trigger_update()
-
-    def _update_geometry(self, exterior):
-        self.interior = exterior
-        start = self._midpos-self._width/2
-        end = self._midpos+self._width/2
-
-        abox = shpl_geom.box(start, exterior.bounds[1]-3, end, exterior.bounds[3]+3)
-
-        intersection = abox.intersection(shpl_geom.Polygon(exterior))
-
-        # intersection of cut elements with spar forbidden
-        #for elem in self._cut_elements:
-        #    if not intersection.intersects(elem):
-        #        continue
-        #    raise Exception('Cannot use cut element in cut element')
-
-        anotherbox = shpl_geom.box(start+self._webwidth,
-                              exterior.bounds[1]-3,
-                              end-self._webwidth,
-                              exterior.bounds[3]+3)
-
-        web = intersection-anotherbox
-        flangebox = intersection.intersection(anotherbox)
-
-        flangcutout = shpl_geom.box(start, flangebox.bounds[1]+self._flangeheigt,
-                               end, flangebox.bounds[3]-self._flangeheigt)
-
-        flange = flangebox-flangcutout
-
-        self.geometry = shpl_geom.GeometryCollection([*web.geoms, *flange.geoms])
-
-        #self._cut_elements = [abox]
-
-    @property
-    def massproperties(self):
-        if type(self.material) is dict:
-            try:
-                webmaterial = self.material['web']
-                flangematerial = self.material['flange']
-            except:
-                raise Exception('wrong material defintion')
-
-            mass = 0.0
-            cg = np.zeros(2)
-
-            for ii, geom in enumerate(self.geometry.geoms):
-                if ii < 2:
-                    material = webmaterial
-                else:
-                    material = flangematerial
-                
-                tmpmass = geom.area*material.ρ 
-                mass += tmpmass
-                cg += np.array(geom.centroid) * tmpmass
-            mass = (self.geometry.geoms[0].area+self.geometry.geoms[1].area)*webmaterial.ρ \
-                    + (self.geometry.geoms[2].area+self.geometry.geoms[3].area)*flangematerial.ρ 
-            cg /= mass
-
-            return shpl_geom.Point(cg), mass
-        else:
-            return super().massproperties
-
+        return [geom2array(geo, refpoint)._replace(material=self.material) for geo in self.geometry.geoms]
 
 class MassAnalysis:
     """Analyse Mass of Structure
@@ -699,108 +294,13 @@ class MassAnalysis:
         mass = 0.0
         cg = np.zeros(2)
             
-        for feature in self.secbase.features:
+        for feature in self.secbase._features:
             cur_cg, cur_mass = feature.massproperties
 
             mass += cur_mass
             cg += cur_mass * np.array(cur_cg)
         
         return cg/mass, mass
-
-
-class LineIdealisation:
-    """Idealisation of section for structural analysis
-
-    Currently only section consisting of a I-Spar and one Layer can
-    be idealized.
-
-    Parameters
-    ----------
-    sectionbase
-        section definiton to be analyzed
-    """
-
-    def __init__(self, sectionbase):
-        
-        self.secbase = sectionbase
-
-        self.geometries = [None, None, None]
-
-        self._check()
-
-    def _check(self):
-        
-        try:
-            self.spar = self.secbase.features[1]
-            self.shell = self.secbase.features[0]
-        except:
-            raise Exception('Section structure may consist of shell and spar, nothing else!')
-
-        if not isinstance(self.spar, ISpar) or not isinstance(self.shell, Layer):
-            raise Exception('Only limited section definition allowed for Idealization.')
-
-    def _update_geometry(self):
-        from shapely import geometry as shpl_geom
-
-        self._check()
-
-        bb = self.shell.parent.interior.bounds
-        cutbox = shpl_geom.box(bb[0], bb[1], self.spar.webpos_abs(), bb[3])
-
-        shell_center = self.shell._centerline()
-
-        def opt_linemerge(geom):
-            from shapely import ops
-            if geom.type == 'MultiLineString':
-                return ops.linemerge(geom)
-            return geom
-
-        geom_left = opt_linemerge(shell_center.intersection(cutbox))
-        geom_right = opt_linemerge(shell_center.difference(cutbox))
-
-        mid_start = np.array(geom_left.coords[0])
-        mid_end = np.array(geom_left.coords[-1])
-
-        coords_mid = mid_start + np.outer((mid_end-mid_start), np.linspace(0,1,40)).T
-
-        self.geometries = np.array(geom_right.coords), coords_mid, np.array(geom_left.coords)
-    
-    @property
-    def geometry(self):
-
-        return self.geometries
-
-    def _generate_datatuple(self, valtuple):
-
-        datagenerator = (valtuple[i]*np.ones_like(self.geometries[i]) for i in range(3))
-
-        return tuple(datagenerator)
-
-    def _thickness(self):
-        
-        shell_t = self.shell.thickness
-        web_t = self.spar.webthickness
-
-        return self._generate_datatuple((shell_t, web_t, shell_t))
-    
-    def _youngsmoduli(self):
-        shell_E = self.shell.material.E
-        web_E = self.spar.material['web'].E
-
-        return self._generate_datatuple((shell_E, web_E, shell_E))
-
-    def _shearmoduli(self):
-        shell_G = self.shell.material.G
-        web_G = self.shell.material.G
-
-        return self._generate_datatuple((shell_G, web_G, shell_G))
-
-    def export(self):
-
-        self._check()
-        self._update_geometry()
-
-        return self._thickness(), self._youngsmoduli(), self._shearmoduli()
 
 
 def _oderside(side):
@@ -867,10 +367,10 @@ def rework_svg(svg:str, width:float, height:float=100.0, stroke_width:float=None
     return svg
 
 
-ArrayStruc = namedtuple('ArrayGeom', ['exterior','interiors','material'])
+Structure = namedtuple('Structure', ['exterior','interiors','material'])
 
 
-def geom2array(geometry, refpoint=np.zeros(2)):
+def exportstructure(geometry, material, refpoint=np.zeros(2)):
     """Helper function to export polygon geometry from shapely to numpy arrays based format
     
     Parameters
@@ -898,12 +398,20 @@ def geom2array(geometry, refpoint=np.zeros(2)):
         else:
             return np.array(linearring.coords)[::-1]
 
-    if geometry.type != 'Polygon':
-        raise ValueError('Geometry must be of type \'Polygon\'')
+    if geometry.type in ('GeometryCollection', 'MultiPolygon'):
+        res = []
+
+        for geo in geometry.geoms:
+            res.extend(exportstructure(geo, material, refpoint))
+        
+        return res
+
+    elif geometry.type != 'Polygon':
+        raise ValueError('Geometry must be of type \'Polygon\' or \'GeometryCollection\', not {}'.format(geometry.type))
 
     exterior = coordsclockwise(geometry.exterior) - refpoint.flat
 
     interiors = [coordsclockwise(interior) - refpoint.flat for interior in geometry.interiors]
 
-    return ArrayStruc(exterior, interiors, None)
+    return [Structure(exterior, interiors, material)]
     

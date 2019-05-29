@@ -13,11 +13,12 @@ _multhop_result = namedtuple('ext_multhopp_result',
 
 class MulthopResult:
     
-    def __init__(self, c_ls, α_is, C_L, C_Di):
+    def __init__(self, c_ls, α_is, C_L, C_Di, γs=0.0):
         self.c_ls = c_ls
         self.α_is = α_is
         self.C_L = C_L
         self.C_Di = C_Di
+        self.γs = γs
     
     def flip(self):
         return MulthopResult(self.c_ls[::-1], self.α_is[::-1],
@@ -25,11 +26,13 @@ class MulthopResult:
     
     def __mul__(self, factor):
         return MulthopResult(self.c_ls * factor, self.α_is * factor,
-                             self.C_L * factor, self.C_Di * abs(factor)) #TODO check C_Di and alpha_i
+                             self.C_L * factor, self.C_Di * abs(factor),
+                             self.γs * factor ) #TODO check C_Di and alpha_i
     
     def __add__(self, other):
         return MulthopResult(self.c_ls+other.c_ls, self.α_is+other.α_is,
-                             self.C_L+other.C_L, self.C_Di+other.C_Di)
+                             self.C_L+other.C_L, self.C_Di+other.C_Di,
+                             self.γs+other.γs)
 
     __rmul__ = __mul__
     __radd__ = __add__
@@ -142,11 +145,11 @@ def multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
         M = len(ys)
 
         θs = np.arccos(-2* ys/b)
-        #print(θs)
+
         γs, α_is = _multhop_solve(θs, αs, chords, dcls, b, return_αi=True)
     
     # calculate lift coefficient distritbution
-    c_ls = 2*b/(np.array(chords)) * np.array(γs) # TODO: Check this formula
+    c_ls = 2*b/(np.array(chords)) * np.array(γs)
 
     # calculate overall lift coefficient (whole wing)
     C_L = π*Λ / (M+1) * np.sum(γs * np.sin(θs))
@@ -154,7 +157,7 @@ def multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
     # calculate induced drag
     C_Di = π*Λ/(M+1) * np.sum( γs * α_is * np.sin(θs))
 
-    return MulthopResult(c_ls, α_is, C_L, C_Di)
+    return MulthopResult(c_ls, α_is, C_L, C_Di, γs)
 
 
 # Helper functions for high level interface
@@ -168,7 +171,7 @@ class AirfoilData(object):
 def _calc_gridpoints(wing, M:int=None):
 
     if M is None:
-        M = int(round(wing.aspect_ratio)*4-1)
+        M = int(round(wing.aspectratio)*4-1)
 
     b = wing.span
 
@@ -183,7 +186,7 @@ def _calc_base_α(wing, ys, airfoil_db):
     def get_α0(airfoil):
         return np.radians(airfoil_db[airfoil].alpha0)
 
-    αs = wing.twists # geometric twist
+    αs = np.radians(wing.twists) # geometric twist
 
     αs -= np.array([get_α0(airfoil) for airfoil in wing.airfoils])
 
@@ -196,7 +199,9 @@ def _calc_eta_eff(η_k):
 
 def _calc_flap_Δα(controlsurface, ys, η):
 
-    λ_k = controlsurface.length(ys)
+    cs = controlsurface
+
+    λ_k = np.interp(ys, [cs.pos1, cs.pos2], [cs.depth1, cs.depth2], left=0.0, right=0.0)
 
     λ_k[ys<0.0] = 0.0 # only consider one side (symmetric wing)
 
@@ -233,12 +238,12 @@ class Multhop:
 
     def airbrakelift(self):
         α_ab = np.radians(-12.0)
-        αs = np.where(self.wing.within_airbrake(self.ys), α_ab, 0.0)
+        αs = np.where(self.wing.within_airbrake(self.ys), α_ab, np.zeros_like(self.ys))
         return self._multhop(αs)
 
     def controlsurfacelift(self, name, η):
         try:
-            control_surf = self.wing.controls[name]
+            control_surf = self.wing.controlsurfaces[name]
         except:
             raise Exception('control surface "{}" is not set in wing definition!'.format(name))
 
@@ -248,7 +253,7 @@ class Multhop:
 
     def _controlsurfacelift_n(self, name):
         try:
-            control_surf = self.wing.controls[name]
+            control_surf = self.wing.controlsurfaces[name]
         except:
             raise Exception('control surface "{}" is not set in wing definition!'.format(name))
 

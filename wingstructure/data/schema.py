@@ -22,16 +22,16 @@ wingsection = sy.Map({
 })
 
 control_surface = sy.Map({
-    'type': sy.Enum(['aileron',
+    'cstype': sy.Enum(['aileron',
                   'flap',
                   'flaperon',
                   'spoiler',
                   'elevator',
                   'rudder']),
-    'span-start': sy.Float(),
-    'span-end': sy.Float(),
-    sy.Optional('chord-pos'): sy.OrValidator(sy.Float(),
-                 sy.FixedSeq([sy.Float(), sy.Float()]))
+    'pos1': sy.Float(),
+    'pos2': sy.Float(),
+    'depth1': sy.Float(),
+    'depth2':sy.Float()
 })
 
 wing = sy.Map({

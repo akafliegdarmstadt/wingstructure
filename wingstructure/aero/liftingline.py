@@ -32,7 +32,7 @@ class LiftAnalysis:
         analysis._airbrake = calculator.airbrakelift()
         analysis._aoa = calculator.aoa(1)
         analysis._control_surfaces = {name : calculator._controlsurfacelift_n(name) \
-                                                     for name in wing.controls.keys()}
+                                                     for name in wing.controlsurfaces.keys()}
         analysis.chords = calculator.chords
 
         return analysis
@@ -54,9 +54,10 @@ class LiftAnalysis:
         contributions = [self._base]
         if airbrake: contributions.append(self._airbrake)
         
-        print(controls.items())
         contributions += [self._calc_controlsurface(*cs) for cs in controls.items()]
 
+        print(contributions)
+        
         for contrib in contributions:
             C_Di += contrib.C_Di
             c_ls += contrib.c_ls
