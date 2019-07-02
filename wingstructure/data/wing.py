@@ -15,6 +15,13 @@ class _Wing:
     """
 
     _Section = namedtuple('Section', ['pos', 'chord', 'twist', 'airfoil'])
+    
+    def serializesection(self):
+        data = dict(self._asdict())
+        data['pos'] = dict(self.pos._asdict())
+        return data
+
+    _Section.serialize = serializesection
 
     def __init__(self,pos=(0.0, 0.0, 0.0), symmetric=True):
         self.x, self.y, self.z = pos
@@ -127,11 +134,25 @@ class Wing(_Wing):
         self.controlsurfaces = {}
 
     def add_controlsurface(self, name, pos1, pos2, depth1, depth2, cstype):
+        """Add controlsurface to Wing instance
+        
+        Parameters
+        ----------
+        name : str
+            identifier for control surface
+        pos1 : float
+            starting position (spanwise)
+        pos2 : float
+            end position (spanwise)
+        depth1 : float
+            start depth or chordwise position (depends on type)
+        depth2 : float
+            end depth or chordwise position (depends on type)
+        cstype : str
+            use one of the following type strings: flap, spoiler, airbrake
+        """
         self.controlsurfaces[name] = self._ControlSurface(
                 pos1, pos2, depth1, depth2, cstype)
-
-    def _repr_svg_(self):
-        pass
 
     @property
     def chords(self):
@@ -149,24 +170,45 @@ class Wing(_Wing):
     def airfoils(self):
         return np.array([sec.airfoil for sec in self.sections])
 
-    def within_airbrake(self, y):
-        within_ab = np.full_like(y, False)
-        for cs in self.controlsurfaces.values():
-            if cs.cstype in ('airbrake', 'spoiler'):
-                within_tmp = (cs.pos1 <= y) & (cs.pos2 >= y)
-                np.where(within_tmp, True, within_ab)
-        return within_ab
-
     def within_control(self, csname, y):
         try:
             cs = self.controlsurfaces[csname]
             return (cs.pos1 <= y) & (y <= cs.pos2)
         except KeyError:
-            return np.full_like(y, False)
+            raise KeyError('{} is not a control surface'.format(csname))
+    
+    def within_airbrake(self, ys):
+        within_ab = np.full_like(ys, False, dtype=bool)
+        for cs in self.controlsurfaces.values():
+            if cs.cstype in ('airbrake', 'spoiler'):
+                within_tmp = (cs.pos1 <= ys) & (cs.pos2 >= ys)
+                within_ab = np.where(within_tmp, True, within_ab)
+        return within_ab
+
+    def serialize(self):
+        data = {
+            'pos': {'x': self.x, 'y': self.y, 'z': self.z},
+            'symmetric': self.symmetric,
+            'sections': [deepcopy(sec.serialize()) for sec in self.sections],
+            'controlsurfaces': {name: dict(cs._asdict()) for name, cs in self.controlsurfaces.items()}
+        }
+
+        return data
 
     @classmethod
-    def from_dict(cls, adict):
+    def deserialize(cls, adict):
+        """Create new Wing instance from dict
         
+        Parameters
+        ----------
+        adict : dict
+            dictionary containing wing data
+        
+        Returns
+        -------
+        Wing
+            instance object
+        """
         # create Wing instance
         wing = cls(pos=Point(**adict['pos']))
 
@@ -178,10 +220,51 @@ class Wing(_Wing):
 
         # add control surfaces
         try:
-            for name, csdict in adict['control-surfaces'].items():
+            for name, csdict in adict['controlsurfaces'].items():
                 wing.add_controlsurface(name, **csdict)
         except KeyError:
             pass
         
         return wing
+    
+    def flatten(self):
+        """create flat wing instance
+        
+        Returns
+        -------
+        Wing
+            a flat wing instance
+        """
 
+        newwing = Wing()
+
+        lastsec = None
+        lastpos = 0.0
+
+        for section in self.sections:
+
+            curpos = section.pos
+
+            if lastsec is not None:
+                # calculate section distance in y-z-plane
+                pos1 = np.array(section.pos)
+                pos2 = np.array(lastsec.pos)
+
+                # ignore x -> 2D vector
+                distvec = (pos1-pos2)[(1,2),] 
+                
+                dist = np.linalg.norm(distvec)
+
+                newpos = curpos._replace(y=lastpos+dist, z=0.0)
+                newsec = section._replace(pos=newpos)
+                
+            else:
+                # set z to zero
+                newpos = curpos._replace(z=0.0)
+                newsec = section._replace(pos=newpos)
+            
+            newwing.sections.append(newsec)
+            lastsec = section
+            lastpos = newsec.pos[1]
+
+        return newwing

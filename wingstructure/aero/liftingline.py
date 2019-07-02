@@ -55,8 +55,6 @@ class LiftAnalysis:
         if airbrake: contributions.append(self._airbrake)
         
         contributions += [self._calc_controlsurface(*cs) for cs in controls.items()]
-
-        print(contributions)
         
         for contrib in contributions:
             C_Di += contrib.C_Di
