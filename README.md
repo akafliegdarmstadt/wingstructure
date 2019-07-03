@@ -22,7 +22,7 @@ wingstructure has three primary functions:
  </tr>
  <tr>
   <td><a href="https://github.com/akafliegdarmstadt/wingstructure/blob/master/examples/CreateGeometryDict.ipynb"><img src="examples/wing.png"></a> </td>
-  <td><a href="https://github.com/akafliegdarmstadt/wingstructure/blob/master/examples/Analysis_Example.ipynb"><img src="examples/Liftdistribution.png"></a></td>
+  <td><a href="https://github.com/akafliegdarmstadt/wingstructure/blob/master/examples/02_Analysis_Example.ipynb"><img src="examples/Liftdistribution.png"></a></td>
   <td><a href="https://github.com/akafliegdarmstadt/wingstructure/blob/master/examples/Section.ipynb"><img src="examples/section.svg"></a></td>
  </tr>
  <tr>
