@@ -51,12 +51,9 @@ def test_wingbasicprops(d38wing):
     assert isclose(macpos[0], 0.2109074-0.7706271/4)
 
 
-def test_controlsurfaces(d38wing):
-    d38wing.add_controlsurface('aileron1', 4.51, 7.125, 0.2, 0.2, 'aileron')
-
-
-def test_flatten(d43wing):
-    flatwing = d43wing.flatten()
+def test_flatwing(d43wing):
+    from wingstructure.data.wing import FlatWing
+    flatwing = FlatWing(d43wing)
 
     # check new spanwidth
     assert isclose(flatwing.span, 2*9.0408708357794)
@@ -111,4 +108,4 @@ def test_serialization(d43wing):
 
     # control surfaces are optional, should not raise any Exception if missing
     del data['controlsurfaces']
-    d43wing3 = Wing.deserialize(data)
+    Wing.deserialize(data)

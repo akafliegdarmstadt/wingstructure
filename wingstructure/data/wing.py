@@ -8,24 +8,26 @@ import numpy as np
 Point = namedtuple('Point', 'x y z')
 
 
-class _Wing:
-    """A data structue for multi trapez wing definitions.
+# monkey patch function
+def serializesection(self):
+    data = dict(self._asdict())
+    data['pos'] = dict(self.pos._asdict())
+    return data
 
-    Not inteded for usage. Have a look at the Wing class.
+
+class _Wing:
+    """
+    A data structue for multi trapez wing definitions.
     """
 
     _Section = namedtuple('Section', ['pos', 'chord', 'twist', 'airfoil'])
     
-    def serializesection(self):
-        data = dict(self._asdict())
-        data['pos'] = dict(self.pos._asdict())
-        return data
+
 
     _Section.serialize = serializesection
 
-    def __init__(self,pos=(0.0, 0.0, 0.0), symmetric=True):
+    def __init__(self, pos=(0.0, 0.0, 0.0)):
         self.x, self.y, self.z = pos
-        self.symmetric = symmetric
         self.sections = []
     
     def append(self, pos=(0.0, 0.0, 0.0), chord=1.0, twist=0.0, airfoil=''):
@@ -88,8 +90,7 @@ class _Wing:
     @property
     def span(self):
         """Get span of wing."""
-        if self.symmetric:
-            return 2*max((sec.pos.y for sec in self.sections))
+        return 2*max((sec.pos.y for sec in self.sections))
 
     @property
     def area(self):
@@ -100,7 +101,7 @@ class _Wing:
 
         area = np.trapz(chord_lengths, span_positions)
 
-        return 2*area if self.symmetric else area
+        return 2*area
 
     @property
     def aspectratio(self):
@@ -121,16 +122,13 @@ class Wing(_Wing):
     pos: float
        coordinate system offset
     rot: float
-       
-    symmetric: bool
-       wing symmetry regarding y=0.0
     """
 
     _ControlSurface = namedtuple('ControlSurface', 
             ['pos1', 'pos2', 'depth1', 'depth2', 'cstype'])
 
-    def __init__(self, pos=(0.0, 0.0, 0.0), symmetric=True):
-        super().__init__(pos, symmetric)
+    def __init__(self, pos=(0.0, 0.0, 0.0)):
+        super().__init__(pos)
         self.controlsurfaces = {}
 
     def add_controlsurface(self, name, pos1, pos2, depth1, depth2, cstype):
@@ -171,6 +169,7 @@ class Wing(_Wing):
         return np.array([sec.airfoil for sec in self.sections])
 
     def within_control(self, csname, y):
+        y = np.abs(y)
         try:
             cs = self.controlsurfaces[csname]
             return (cs.pos1 <= y) & (y <= cs.pos2)
@@ -178,6 +177,7 @@ class Wing(_Wing):
             raise KeyError('{} is not a control surface'.format(csname))
     
     def within_airbrake(self, ys):
+        ys = np.abs(ys)
         within_ab = np.full_like(ys, False, dtype=bool)
         for cs in self.controlsurfaces.values():
             if cs.cstype in ('airbrake', 'spoiler'):
@@ -188,7 +188,6 @@ class Wing(_Wing):
     def serialize(self):
         data = {
             'pos': {'x': self.x, 'y': self.y, 'z': self.z},
-            'symmetric': self.symmetric,
             'sections': [deepcopy(sec.serialize()) for sec in self.sections],
             'controlsurfaces': {name: dict(cs._asdict()) for name, cs in self.controlsurfaces.items()}
         }
@@ -226,8 +225,21 @@ class Wing(_Wing):
             pass
         
         return wing
+
+            
+class FlatWing(Wing):
+    """A class representing the flattend version of a wing
+
+    Can be useful in calculation of aerodynamic loads with methods not suporting
+    dihedral. Flat means parallel to the x-y-plane.
     
-    def flatten(self):
+    Parameters
+    ----------
+    wing : Wing
+        the wing to be flattend
+    """
+    
+    def __init__(self, wing):
         """create flat wing instance
         
         Returns
@@ -236,12 +248,14 @@ class Wing(_Wing):
             a flat wing instance
         """
 
-        newwing = Wing()
+        super().__init__((wing.x, wing.y, wing.z))
+
+        self.basewing = wing
 
         lastsec = None
         lastpos = 0.0
 
-        for section in self.sections:
+        for section in wing.sections:
 
             curpos = section.pos
 
@@ -263,8 +277,6 @@ class Wing(_Wing):
                 newpos = curpos._replace(z=0.0)
                 newsec = section._replace(pos=newpos)
             
-            newwing.sections.append(newsec)
+            self.sections.append(newsec)
             lastsec = section
             lastpos = newsec.pos[1]
-
-        return newwing

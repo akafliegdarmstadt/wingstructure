@@ -1,6 +1,5 @@
-from . import section, internalreactions, beammechanics, material, polygon
+from . import section, stickmodel, beammechanics, material, polygon
 
 from .section import SectionBase, Layer, Reinforcement
-#from .section import ISpar, BoxSpar, MassAnalysis
-from .internalreactions import combine_loads, calc_moments
+from .stickmodel import calc_lineloadresultants, solve_equilibrium
 from .polygon import calc_neutralcenter, calc_bendingstiffness
