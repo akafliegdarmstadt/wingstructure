@@ -99,14 +99,14 @@ def calc_discretemoments(ys, m, axis=0):
 
     return M
 
-def transform_loads(flatwing, loads, rotate=False):
-    """transform loads from flat to three dimensional wing
+def transform_forces(flatwing, forces, rotate=False):
+    """transform forces from flat to three dimensional wing
     
     Parameters
     ----------
     flatwing: FlatWing
         instance of flattend wing
-    loads : array
+    forces : array
         resultant loads array [[x, y, z, Q_x, N, Q_y]..]
     rotate : bool, optional
         switch for rotation of loads, by default False
@@ -115,9 +115,9 @@ def transform_loads(flatwing, loads, rotate=False):
     ys = flatwing.ys
     dy = np.diff(ys)
 
-    transformed_loads = np.array(loads, copy=True, dtype=np.float)
+    transformed_loads = np.array(forces, copy=True, dtype=np.float)
 
-    for j, load in enumerate(loads):
+    for j, load in enumerate(forces):
         y = load[1]
 
         # find last value smaller than y in ys
@@ -152,6 +152,50 @@ def transform_loads(flatwing, loads, rotate=False):
 
     return transformed_loads
 
+
+def transform_moments(flatwing, moments, ys):
+    """Transform moments into wing coordinate system
+    
+    Parameters
+    ----------
+    flatwing : FlatWing
+        discription of flattend wing
+    moments : array
+        discrete moments [[Mx, My, Mz, segment],...]
+
+    Returns
+    -------
+    array
+        transformed moments
+    """
+
+    from scipy.interpolate import interp1d
+
+    transformed_moments = np.copy(moments)
+
+    positions = np.array([(sec.pos.y, sec.pos.z) for sec in flatwing.basewing.sections])
+
+    normals = np.diff(positions, axis=0, append=0.0)
+    normals[:-1,:] /= np.linalg.norm(normals[:-1,:])
+
+    cosφ = interp1d(flatwing.ys, np.dot((1,0), normals.T), kind='previous')
+
+    midy = ys[:-1] + np.diff(ys)/2
+
+    for i, (_,_,_,seg_id) in enumerate(moments):
+        y = midy[int(seg_id)]
+        ccosφ = cosφ(abs(y))
+        csinφ = np.sqrt(1-ccosφ**2)
+
+        rotmat = np.eye(3)
+        rotmat[1:,1:] = [[ccosφ, csinφ], [-csinφ, ccosφ]]
+
+        if y<0.0:
+            rotmat = rotmat.T
+        transformed_moments[i,:-1] = transformed_moments[i,:-1] @ rotmat
+    
+    return transformed_moments
+    
 
 def get_nodes(wing, ys):
     """calculate grid points from wing

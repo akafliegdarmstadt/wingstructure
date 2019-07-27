@@ -2,6 +2,19 @@ import pytest
 import numpy as np
 
 
+@pytest.fixture
+def flatwing():
+    from wingstructure.data.wing import Wing, FlatWing
+
+    wing = Wing()
+    wing.append()
+    wing.append(pos=(0.0, 1.0, 1.0))
+
+    flatwing = FlatWing(wing)
+
+    return flatwing
+
+
 def test_lineloadresultants():
     from wingstructure.structure.stickmodel import calc_lineloadresultants
 
@@ -40,43 +53,29 @@ def test_discretemoments():
     ).all()
 
 
-
-def test_transformload():
-    from wingstructure.data.wing import Wing, FlatWing
-    from wingstructure.structure.stickmodel import transform_loads
-    
-    wing = Wing()
-    wing.append()
-    wing.append(pos=(0.0, 1.0, 1.0))
-
-    flatwing = FlatWing(wing)
+def test_transform_forces(flatwing):
+    from wingstructure.structure.stickmodel import transform_forces
 
     loads = np.array([
-        [0,1,0,0,0,1,0]
+        [0,1,0,0,0,1,5]
     ])
 
-    tloads = transform_loads(flatwing, loads)
+    tloads = transform_forces(flatwing, loads)
 
     assert np.isclose(
             tloads[0, :3], 
             [0, 1/np.sqrt(2), 1/np.sqrt(2)]
         ).all()
 
-def test_transformload_with_rotation():
-    from wingstructure.data.wing import Wing, FlatWing
-    from wingstructure.structure.stickmodel import transform_loads 
 
-    wing = Wing()
-    wing.append()
-    wing.append(pos=(0.0, 1.0, 1.0))
-
-    flatwing = FlatWing(wing)
+def test_transform_forces_with_rotation(flatwing):
+    from wingstructure.structure.stickmodel import transform_forces 
 
     loads = np.array([
-        [0,1,0,0,0,1,0]
+        [0,1,0,0,0,1,4000]
     ])
 
-    tloads = transform_loads(flatwing, loads, rotate=True)
+    tloads = transform_forces(flatwing, loads, rotate=True)
 
     # check correct transformation of attack point
     assert np.isclose(
@@ -89,6 +88,29 @@ def test_transformload_with_rotation():
         tloads[0 ,3:-1],
         [0, -1/np.sqrt(2), 1/np.sqrt(2)]
     ).all()
+
+
+def test_transformmoments(flatwing):
+    from wingstructure.structure.stickmodel import transform_moments
+
+    # grid points
+    ys = np.array([-np.sqrt(2), -1.0, 0, 1.0, np.sqrt(2)])
+
+    # moments on left and right side
+    moments = np.array([
+        [1.0, 2.0, 2.0, 0],
+        [1.0, -2.0, 2.0, 3]
+    ])
+
+    # do transformation
+    tmoments = transform_moments(flatwing, moments, ys)
+
+    # check for equalitiy of absolute values for left and right side
+    assert np.isclose(*np.abs(tmoments[:,:-1])).all()
+
+    # check left side
+    assert np.isclose(tmoments[0,:-1], [1.0, np.sqrt(8), 0.0]).all()
+
 
 def test_getnodes():
     from wingstructure.data.wing import Wing
