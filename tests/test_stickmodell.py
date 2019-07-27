@@ -72,7 +72,8 @@ def test_transform_forces_with_rotation(flatwing):
     from wingstructure.structure.stickmodel import transform_forces 
 
     loads = np.array([
-        [0,1,0,0,0,1,4000]
+        [0,  1, 0, 0,  1, 0, 5],
+        [0,  1, 0, 0, -1, 0, 4000]
     ])
 
     tloads = transform_forces(flatwing, loads, rotate=True)
@@ -81,12 +82,17 @@ def test_transform_forces_with_rotation(flatwing):
     assert np.isclose(
             tloads[0, :3], 
             [0, 1/np.sqrt(2), 1/np.sqrt(2)]
-        ).all()
+    ).all()
 
     # check transformation/rotation of force vector
     assert np.isclose(
         tloads[0 ,3:-1],
-        [0, -1/np.sqrt(2), 1/np.sqrt(2)]
+        [0, 1/np.sqrt(2), 1/np.sqrt(2)]
+    ).all()
+
+    assert np.isclose(
+        tloads[1 ,3:-1],
+        [0, -1/np.sqrt(2), -1/np.sqrt(2)]
     ).all()
 
 

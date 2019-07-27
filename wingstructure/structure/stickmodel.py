@@ -133,9 +133,6 @@ def transform_forces(flatwing, forces, rotate=False):
         # interpolate position
         transformed_loads[j, :3] = pos1 + (pos2-pos1) * f
 
-        if y<0.0:
-            transformed_loads[j,1] *= -1.0
-
         if rotate:
             rotmat = np.eye(3)
 
@@ -146,9 +143,12 @@ def transform_forces(flatwing, forces, rotate=False):
             cosφ = np.dot(n0, n1)
             sinφ = np.sqrt(1-cosφ**2)
 
-            rotmat[1:,1:] = [[cosφ, -sinφ], [sinφ, cosφ]]
+            rotmat[1:,1:] = [[cosφ, sinφ], [-sinφ, cosφ]]
 
-            transformed_loads[j, 3:-1] = transformed_loads[j, 3:-1] @ rotmat.T
+            if y<0.0:
+                rotmat = rotmat.T
+
+            transformed_loads[j, 3:-1] = transformed_loads[j, 3:-1] @ rotmat
 
     return transformed_loads
 
