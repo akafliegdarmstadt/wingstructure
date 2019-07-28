@@ -99,7 +99,7 @@ def calc_discretemoments(ys, m, axis=0):
 
     return M
 
-def transform_forces(flatwing, forces, rotate=False):
+def transform_forces(flatwing, forces, rotate=False, inline=False):
     """transform forces from flat to three dimensional wing
     
     Parameters
@@ -110,12 +110,23 @@ def transform_forces(flatwing, forces, rotate=False):
         resultant loads array [[x, y, z, Q_x, N, Q_y]..]
     rotate : bool, optional
         switch for rotation of loads, by default False
+    inline : bool, optional
+        modify forces if True or return new transformed_forces array
+
+    Returns
+    -------
+    array
+        transformed_forces if inline=False
+
+      ..caution::
+        when using inline option make sure forces have floating point dtype 
     """
 
     ys = flatwing.ys
     dy = np.diff(ys)
 
-    transformed_loads = np.array(forces, copy=True, dtype=np.float)
+    if not inline:
+        forces = np.array(forces, copy=True, dtype=np.float)
 
     for j, load in enumerate(forces):
         y = load[1]
@@ -131,7 +142,7 @@ def transform_forces(flatwing, forces, rotate=False):
         f = (np.abs(y)-ys[i-1])/dy[i-1]
 
         # interpolate position
-        transformed_loads[j, :3] = pos1 + (pos2-pos1) * f
+        forces[j, :3] = pos1 + (pos2-pos1) * f
 
         if rotate:
             rotmat = np.eye(3)
@@ -148,12 +159,13 @@ def transform_forces(flatwing, forces, rotate=False):
             if y<0.0:
                 rotmat = rotmat.T
 
-            transformed_loads[j, 3:-1] = transformed_loads[j, 3:-1] @ rotmat
+            forces[j, 3:-1] = forces[j, 3:-1] @ rotmat
 
-    return transformed_loads
+    if not inline:
+        return forces
 
 
-def transform_moments(flatwing, moments, ys):
+def transform_moments(flatwing, moments, ys, inline=False):
     """Transform moments into wing coordinate system
     
     Parameters
@@ -162,16 +174,23 @@ def transform_moments(flatwing, moments, ys):
         discription of flattend wing
     moments : array
         discrete moments [[Mx, My, Mz, segment],...]
+    ys: array
+        grid points
+    inline: bool
+        modify moments or return new array
 
     Returns
     -------
     array
-        transformed moments
+        transformed moments, only if inline=False
     """
 
     from scipy.interpolate import interp1d
 
-    transformed_moments = np.copy(moments)
+    if inline:
+        transformed_moments = moments
+    else:
+        transformed_moments = np.copy(moments)
 
     positions = np.array([(sec.pos.y, sec.pos.z) for sec in flatwing.basewing.sections])
 
@@ -194,10 +213,11 @@ def transform_moments(flatwing, moments, ys):
             rotmat = rotmat.T
         transformed_moments[i,:-1] = transformed_moments[i,:-1] @ rotmat
     
-    return transformed_moments
-    
+    if not inline:
+        return transformed_moments
+   
 
-def get_nodes(wing, ys):
+def get_nodes(wing, ys, chordpos=0.25):
     """calculate grid points from wing
     
     Parameters
@@ -206,6 +226,8 @@ def get_nodes(wing, ys):
         a object describing a wing
     ys : array
         grid points on flattend span
+    chordpos: float
+        relativ position in chordwise direction
     
     Returns
     -------
@@ -224,7 +246,7 @@ def get_nodes(wing, ys):
     return interp1d(secy, pos, axis=0)(ys)
 
 
-def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,7)), free_node=0):
+def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), free_node=0):
     """Solves static equilibrium in unbranched stick model
     
     Parameters
@@ -290,3 +312,7 @@ def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,7)), fr
     x = np.linalg.solve(A, -b)
 
     return np.reshape(x, (len(x)//6, 6))
+
+
+def transform_internalloads():
+    pass

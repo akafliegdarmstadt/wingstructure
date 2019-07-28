@@ -72,11 +72,15 @@ def test_transform_forces_with_rotation(flatwing):
     from wingstructure.structure.stickmodel import transform_forces 
 
     loads = np.array([
-        [0,  1, 0, 0,  1, 0, 5],
-        [0,  1, 0, 0, -1, 0, 4000]
+        [0.0,  1, 0, 0,  1, 0, 5],
+        [0.0,  1, 0, 0, -1, 0, 4000]
     ])
 
     tloads = transform_forces(flatwing, loads, rotate=True)
+
+    # check that inline method works as expected
+    transform_forces(flatwing, loads, rotate=True, inline=True)
+    assert np.isclose(tloads, loads).all()
 
     # check correct transformation of attack point
     assert np.isclose(
@@ -110,6 +114,11 @@ def test_transformmoments(flatwing):
 
     # do transformation
     tmoments = transform_moments(flatwing, moments, ys)
+
+    # check inline option
+    transform_moments(flatwing, moments, ys, inline=True)
+
+    assert np.isclose(tmoments, moments).all()
 
     # check for equalitiy of absolute values for left and right side
     assert np.isclose(*np.abs(tmoments[:,:-1])).all()

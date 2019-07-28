@@ -20,6 +20,8 @@ class LiftAnalysis:
         
         ys = _calc_gridpoints(wing, M)
 
+        ys[len(ys)//2] = 0.0
+
         try:
             calculator = _calculator_dict[method](wing, ys, airfoil_db)
         except:
