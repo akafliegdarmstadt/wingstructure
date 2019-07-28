@@ -109,3 +109,7 @@ def test_serialization(d43wing):
     # control surfaces are optional, should not raise any Exception if missing
     del data['controlsurfaces']
     Wing.deserialize(data)
+
+
+def test_plot(d43wing):
+    d43wing.plot()

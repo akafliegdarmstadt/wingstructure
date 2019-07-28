@@ -226,6 +226,39 @@ class Wing(_Wing):
         
         return wing
 
+    def plot(self):
+        import matplotlib.pyplot as plt
+        
+        # draw centerline 
+        plt.axvline(x=0, linestyle='-.')
+        
+        # draw sections
+        x_positions = []
+        y_positions = []
+        chord_lengths = []
+        
+        for section in self.sections:
+            x = section.pos.x+self.x
+            y = section.pos.y
+            chord = section.chord
+            
+            plt.plot((y, y), (-x, -x-chord), 'r')
+            x_positions.append(x)
+            y_positions.append(y)
+            chord_lengths.append(chord)
+        
+        y_positions = np.array(y_positions)
+        
+        # draw leading edge
+        plt.plot(y_positions, -1*np.array(x_positions), 'b' )
+        # draw trailing edge
+        plt.plot(y_positions, -1*np.array(x_positions)-np.array(chord_lengths), 'b')
+        
+        # format 
+        plt.axis('equal')
+        plt.axis('off')
+        plt.xlim(-1, max(y_positions)+1)
+
             
 class FlatWing(Wing):
     """A class representing the flattend version of a wing
