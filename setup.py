@@ -33,5 +33,11 @@ setup(name='wingstructure',
         'ipython',
         'pandas'
     ],
-    zip_safe=False
-    )
+    zip_safe=False,
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI  Approved :: MIT License",
+        "Natural Language :: English",
+        "Topic :: Scientific/Engineering",
+    ],
+)
