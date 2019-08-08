@@ -237,7 +237,8 @@ def get_nodes(wing, ys, chordpos=0.25):
     from numpy import diff, linalg
     from scipy.interpolate import interp1d
 
-    pos = [(sec.pos.x, sec.pos.y, sec.pos.z) for sec in wing.sections]
+    pos = [(sec.pos.x + sec.chord*chordpos, sec.pos.y, sec.pos.z) \
+                for sec in wing.sections]
 
     pos = np.array(pos)
 
@@ -247,7 +248,7 @@ def get_nodes(wing, ys, chordpos=0.25):
 
 
 def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), free_node=0):
-    """Solves static equilibrium in unbranched stick model
+    """Solve static equilibrium in unbranched stick model
     
     Parameters
     ----------
@@ -314,5 +315,46 @@ def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), fr
     return np.reshape(x, (len(x)//6, 6))
 
 
-def transform_internalloads():
-    pass
+def internalloads2spar(internalloads, sparnodes):
+    """Transform internal loads to spar coordinate system
+    
+    Parameters
+    ----------
+    internalloads : array
+        internal loads (global cartesian coordinate system)
+    sparnodes : array
+        coordinates of spar nodes
+    
+    Returns
+    -------
+    array
+        transformed internal loads [[Qn, Q1 Q2, Mt, Mb1, Mb2], ...]
+    """
+    
+    for i, load in enumerate(internalloads):
+        # get current spar normal
+        ns = _get_normal(*sparnodes[i:i+2,:])
+
+        # remove x component
+        ns[0] = 0.0
+        ns /= np.linalg.norm(ns)
+
+        # collect all direction vectors
+        n1 = ns
+        n2 = np.array([1.0, 0.0, 0.0])
+        n3 = np.cross(n2, n1)
+
+        # build rotation matrix
+        rotmat = np.vstack((n1,n2,n3)).T
+
+        # do transformation
+        internalloads[i,:3] = load[:3] @ rotmat
+        internalloads[i, 3:] = load[3:] @ rotmat
+
+    return internalloads
+
+def _get_normal(p1, p2):
+    n = p2-p1
+    n0 = n/np.linalg.norm(n)
+
+    return n0

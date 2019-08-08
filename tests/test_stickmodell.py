@@ -174,3 +174,23 @@ def test_solve2Ds():
         [0, 0, 2, 1, 0, 2],
         [0, 0, 0, 0, 0, 0]
     ]).all()
+
+
+def test_2spar():
+    from wingstructure.structure.stickmodel import internalloads2spar
+
+    loads = np.array([
+        [0, 0, 1, 0, 1, 0]
+    ], dtype=float)
+
+    sparnodes = np.array([
+        [0.0, 0.0, 0.0],
+        [0.0, 1.0, 1.0]
+    ])
+
+    tloads = internalloads2spar(loads, sparnodes)
+
+    val = np.sqrt(2)/2
+
+    assert np.isclose(tloads,
+        [val, 0, val, val, 0, -val]).all()
