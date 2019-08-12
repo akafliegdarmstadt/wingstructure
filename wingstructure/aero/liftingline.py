@@ -123,4 +123,4 @@ def calculate(wing, alpha=None, C_L=None, controls={}, airbrake=False, M=None, m
 
             additional['C_Mx'] = C_Mx
         
-        return {'c_ls': base_res.c_ls, 'a_is': base_res.α_is, 'C_L': base_res.C_L, 'alpha': alpha, **additional}
+        return {'c_ls': base_res.c_ls, 'a_is': base_res.α_is, 'C_L': base_res.C_L, 'alpha': np.rad2deg(alpha), **additional}
