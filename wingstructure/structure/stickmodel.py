@@ -99,6 +99,7 @@ def calc_discretemoments(ys, m, axis=0):
 
     return M
 
+
 def transform_forces(flatwing, forces, rotate=False, inline=False):
     """transform forces from flat to three dimensional wing
     

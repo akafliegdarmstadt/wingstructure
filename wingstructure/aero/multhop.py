@@ -163,10 +163,10 @@ def multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
 # Helper functions for high level interface
 
 class AirfoilData(object):
-    def __init__(self, alpha0: float = 0, dif_ca_alpha: float = 2*np.pi, cm0: float = 0):
+    def __init__(self, alpha0: float = 0, dif_ca_alpha: float = 2*np.pi, c_m0: float = 0):
         self.alpha0 = alpha0
         self.dif_ca_alpha = dif_ca_alpha
-        self.cm0 = cm0
+        self.c_m0 = c_m0
 
 def _calc_gridpoints(wing, M:int=None):
 
