@@ -139,7 +139,7 @@ def test_getnodes():
     awing.append(pos=(0.0, 1.0, 0.0))
     awing.append(pos=(0.0, 1.0, 1.0))
 
-    res = get_nodes(awing, ys)
+    res = get_nodes(awing, ys, chordpos=0.0)
 
     assert np.isclose(
         res,
