@@ -17,7 +17,35 @@ _calculator_dict = {
 class LiftAnalysis:
     @classmethod
     def generate(cls, wing, airfoil_db=defaultdict(AirfoilData), M=None, method='multhop'):
+        """Build a LiftAnalysis object
         
+        Parameters
+        ----------
+        wing : Wing
+            a wing object
+        airfoil_db : [type], optional
+            , by default defaultdict(AirfoilData)
+        M : int, optional
+            number of grid points for calculation, must be uneven, by default None
+        method : str, optional
+            calculation method, by default 'multhop' (only option atm)
+        
+        Returns
+        -------
+        LiftAnalysis
+            lift analysis object
+        
+        Raises
+        ------
+        ValueError
+            M has to be uneven if chosen!
+        NotImplementedError
+            is raised when chosen cacluation method is available
+        """
+        
+        if M%2 != 1:
+            raise ValueError('Number of grid points (M) has to be uneven!')
+
         ys = _calc_gridpoints(wing, M)
 
         ys[len(ys)//2] = 0.0
@@ -25,7 +53,7 @@ class LiftAnalysis:
         try:
             calculator = _calculator_dict[method](wing, ys, airfoil_db)
         except:
-            raise Exception('{} is not implemented yet!'.format(method))
+            raise NotImplementedError('{} is not implemented yet!'.format(method))
 
         analysis = cls()
 
