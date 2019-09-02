@@ -43,7 +43,7 @@ class LiftAnalysis:
             is raised when chosen cacluation method is available
         """
         
-        if M%2 != 1:
+        if M is not None and M%2 != 1:
             raise ValueError('Number of grid points (M) has to be uneven!')
 
         ys = _calc_gridpoints(wing, M)
