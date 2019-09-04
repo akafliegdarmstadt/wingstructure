@@ -49,7 +49,7 @@ def calc_lineloadresultants(ys, q):
             # -> resultants of the two triangles are used
             y_0 = ys[i-1] + Δys[i-1] * np.abs(q[i]/q[i-1]) / (1 + np.abs(q[i]/q[i-1]))
 
-            print(f'y_0 = {y_0, Δys, ys[i-1]}')
+            #print(f'y_0 = {y_0, Δys, ys[i-1]}')
 
             # left triangle
             Q.append(0.5*(y_0-ys[i-1])*q[i-1])
@@ -331,18 +331,26 @@ def internalloads2spar(internalloads, sparnodes):
     array
         transformed internal loads [[Qn, Q1 Q2, Mt, Mb1, Mb2], ...]
     """
+
+    internalloads = np.copy(internalloads)
     
     for i, load in enumerate(internalloads):
-        # get current spar normal
-        ns = _get_normal(*sparnodes[i:i+2,:])
 
+        # get current spar normal
+
+        ## if last node - use same direction vector as before
+        if i == sparnodes.shape[0]-1:
+            i -= 1
+        
+        ns = _get_normal(*sparnodes[i:i+2,:])
+        
         # remove x component
         ns[0] = 0.0
         ns /= np.linalg.norm(ns)
 
         # collect all direction vectors
-        n1 = ns
-        n2 = np.array([1.0, 0.0, 0.0])
+        n1 = np.array([1.0, 0.0, 0.0])
+        n2 = ns
         n3 = np.cross(n2, n1)
 
         # build rotation matrix
