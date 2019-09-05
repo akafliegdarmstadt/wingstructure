@@ -180,6 +180,7 @@ def test_2spar():
     from wingstructure.structure.stickmodel import internalloads2spar
 
     loads = np.array([
+        [0, 0, 1, 0, 1, 0],
         [0, 0, 1, 0, 1, 0]
     ], dtype=float)
 
@@ -192,5 +193,5 @@ def test_2spar():
 
     val = np.sqrt(2)/2
 
-    assert np.isclose(tloads,
-        [val, 0, val, val, 0, -val]).all()
+    assert np.isclose(tloads[0,:],
+        [0, val, -val, 0, val, val]).all()
