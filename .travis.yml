@@ -7,7 +7,9 @@ install:
   - pip install .
   - pip install python-coveralls
   - pip install pytest-cov
+  - pip install nbval
 script:
   - pytest tests --cov=wingstructure
+  - pytest --nbval-lax examples/
 after_success:
   - coveralls
