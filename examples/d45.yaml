@@ -6,28 +6,28 @@ aerodynamic:
     C_M0: 0.01
 geometry:
     wing:
-        pos: [0., 0., 0.]
+        pos: {x: 0.0, y: 0.0, z: 0.0}
         mass:
             value: 123.79 # kg aus Massenschätzung
             cg: [0.3, 0., 0.]
         sections: # basiert auf Masterarbeit J. Bös
         # Berechnung von posx: pos_xi=c_0(y)*83/100-c_i(y)*83/100 
-        - pos: [0., 0., 0.]
+        - pos: {x: 0., y: 0., z: 0.}
           chord: 0.632
           airfoil: 'D45-128/17'
-        - pos: [0.04731, 3.0, 0.]
+        - pos: {x: 0.04731, y: 3.0, z: 0.}
           chord: 0.575
           airfoil: 'D45-128/17'
-        - pos: [0.13446, 5.25, 0.]
+        - pos: {x: 0.13446, y: 5.25, z: 0.}
           chord: 0.47
           airfoil: 'D45-128/17V2'
-        - pos: [0.23821, 6.5, 0.]
+        - pos: {x: 0.23821, y: 6.5, z: 0.}
           chord: 0.345
           airfoil: 'D45-126/17'
-        - pos: [0.32951, 7.15, 0.]
+        - pos: {x: 0.32951, y: 7.15, z: 0.}
           chord: 0.235
           airfoil: 'D45-126/17V2'
-        - pos: [0.40006, 7.5, 0.]
+        - pos: {x: 0.40006, y: 7.5, z: 0.}
           chord: 0.15
           airfoil: 'D45-125/17'
         flaps:
