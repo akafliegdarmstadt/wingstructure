@@ -65,7 +65,7 @@ def _prepare_multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
     return calc_ys, θs, αs_int, chords_int, dcls_int
 
 
-def _multhop_solve(θs, αs, chords, dcls, b, return_αi=False):
+def _multhop_solve(θs, αs, chords, dcls, b):
     
     # number of grid points
     M = len(θs)
@@ -83,9 +83,6 @@ def _multhop_solve(θs, αs, chords, dcls, b, return_αi=False):
                 # prevent division throught zero
                 if np.isclose(np.sin(θv), 0.0):
                     θv = 1e-15
-                
-                if c==0.0:
-                    import pdb; pdb.set_trace()
                 
                 Bb[v, v] = (M+1)/(4*np.sin(θv))
                 Bd[v] = 2*b/(dcl_v*c)

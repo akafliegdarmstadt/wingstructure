@@ -35,7 +35,7 @@ def test_multhop_solve():
 
     calc_ys = solverinput[0]
 
-    γs = multhop._multhop_solve(*solverinput[1:], b)
+    γs, _ = multhop._multhop_solve(*solverinput[1:], b)
 
     assert np.isclose(calc_ys[M//2:]/b*2, ηs_ref[:-1], atol=1e-4).all()
     assert np.isclose(γs[M//2:], γs_ref[:-1], atol=1e-4).all()
