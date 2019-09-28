@@ -99,7 +99,7 @@ def _multhop_solve(θs, αs, chords, dcls, b):
     # calculate induced angle of attack
     α_is = Bb@γs
     
-    return   , α_is
+    return   γs, α_is
 
 
 def multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
