@@ -13,7 +13,8 @@ _multhop_result = namedtuple('ext_multhopp_result',
 
 class MulthopResult:
     
-    def __init__(self, c_ls, α_is, C_L, C_Di, γs=0.0):
+    def __init__(self, ys, c_ls, α_is, C_L, C_Di, γs=0.0):
+        self.ys = ys
         self.c_ls = c_ls
         self.α_is = α_is
         self.C_L = C_L
@@ -21,16 +22,18 @@ class MulthopResult:
         self.γs = γs
     
     def flip(self):
-        return MulthopResult(self.c_ls[::-1], self.α_is[::-1],
+        return MulthopResult(self.ys[::-1], self.c_ls[::-1], self.α_is[::-1],
                              self.C_L, self.C_Di)
     
     def __mul__(self, factor):
-        return MulthopResult(self.c_ls * factor, self.α_is * factor,
+        return MulthopResult(self.ys,
+                             self.c_ls * factor, self.α_is * factor,
                              self.C_L * factor, self.C_Di * abs(factor),
                              self.γs * factor ) #TODO check C_Di and alpha_i
     
     def __add__(self, other):
-        return MulthopResult(self.c_ls+other.c_ls, self.α_is+other.α_is,
+        return MulthopResult(self.ys,
+                             self.c_ls+other.c_ls, self.α_is+other.α_is,
                              self.C_L+other.C_L, self.C_Di+other.C_Di,
                              self.γs+other.γs)
 
@@ -51,6 +54,7 @@ def _prepare_multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
 
     θs = np.linspace(np.pi/(M+1), M/(M+1)*np.pi, M)
     calc_ys = -b/2 * np.cos(θs)
+    calc_ys[M//2] = 0.0
 
     # interpolate input values
     
@@ -62,7 +66,7 @@ def _prepare_multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
 
 
 def _multhop_solve(θs, αs, chords, dcls, b, return_αi=False):
-
+    
     # number of grid points
     M = len(θs)
 
@@ -80,6 +84,9 @@ def _multhop_solve(θs, αs, chords, dcls, b, return_αi=False):
                 if np.isclose(np.sin(θv), 0.0):
                     θv = 1e-15
                 
+                if c==0.0:
+                    import pdb; pdb.set_trace()
+                
                 Bb[v, v] = (M+1)/(4*np.sin(θv))
                 Bd[v] = 2*b/(dcl_v*c)
             # non diagonal elements
@@ -89,14 +96,13 @@ def _multhop_solve(θs, αs, chords, dcls, b, return_αi=False):
 
     B = Bb + np.diag(Bd)
 
-    # calculation of local circulation
+    # calculate local circulation
     γs = np.dot(np.linalg.inv(B), αs)
-
-    if not return_αi:
-        return γs
-    else:
-        α_is = Bb@γs
-        return γs, α_is
+    
+    # calculate induced angle of attack
+    α_is = Bb@γs
+    
+    return γs, α_is
 
 
 def multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
@@ -131,7 +137,7 @@ def multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
          lift coefficients, induced angle of attack, 
          wing's lift coefficient, induced drag coefficient
     """
-
+    
     # calculate aspect ratio
     Λ = b**2 / S
 
@@ -140,7 +146,12 @@ def multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
 
         γs, α_is = _multhop_solve(*solverinput[1:], b, return_αi=True)
 
-        θs = solverinput[1]
+        ys, θs = solverinput[0:2]
+        
+        chords = solverinput[3]
+        
+        import pdb
+        
     else:
         M = len(ys)
 
@@ -157,7 +168,7 @@ def multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
     # calculate induced drag
     C_Di = π*Λ/(M+1) * np.sum( γs * α_is * np.sin(θs))
 
-    return MulthopResult(c_ls, α_is, C_L, C_Di, γs)
+    return MulthopResult(ys, c_ls, α_is, C_L, C_Di, γs)
 
 
 # Helper functions for high level interface
