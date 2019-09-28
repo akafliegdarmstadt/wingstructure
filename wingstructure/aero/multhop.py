@@ -99,7 +99,7 @@ def _multhop_solve(θs, αs, chords, dcls, b):
     # calculate induced angle of attack
     α_is = Bb@γs
     
-    return γs, α_is
+    return   , α_is
 
 
 def multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
@@ -141,7 +141,7 @@ def multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
     if do_prep:
         solverinput = _prepare_multhop(ys, αs, chords, dcls, S, b, M)
 
-        γs, α_is = _multhop_solve(*solverinput[1:], b, return_αi=True)
+        γs, α_is = _multhop_solve(*solverinput[1:], b)
 
         ys, θs = solverinput[0:2]
         
@@ -154,7 +154,7 @@ def multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
 
         θs = np.arccos(-2* ys/b)
 
-        γs, α_is = _multhop_solve(θs, αs, chords, dcls, b, return_αi=True)
+        γs, α_is = _multhop_solve(θs, αs, chords, dcls, b)
     
     # calculate lift coefficient distritbution
     c_ls = 2*b/(np.array(chords)) * np.array(γs)
