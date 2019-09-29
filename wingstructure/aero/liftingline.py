@@ -75,29 +75,11 @@ class LiftAnalysis:
         self._aoa = None
         self._control_surfaces = {}
     
-    def calculate(self, C_L, controls:dict={}, airbrake:bool=False, airfoil_db:dict=None, options:dict=None):
+    def calculate(self, C_L, controls:dict={}, airbrake:bool=False):
         
-        c_ls = np.zeros_like(self.ys)
-        C_Di = 0.0
+        α, res = self.__call__(C_L, 'C_L', controls, airbrake)
 
-        # collect contributions to lift distribution
-        contributions = [self._base]
-        if airbrake: contributions.append(self._airbrake)
-        
-        contributions += [self._calc_controlsurface(*cs) for cs in controls.items()]
-        
-        for contrib in contributions:
-            C_Di += contrib.C_Di
-            c_ls += contrib.c_ls
-            C_L -= contrib.C_L
-
-        # choose angle of attack to reach C_L
-        α = C_L / self._aoa.C_L
-
-        c_ls += α * self._aoa.c_ls
-        C_Di += abs(α) * self._aoa.C_Di
-
-        return np.rad2deg(α), c_ls, C_Di
+        return np.rad2deg(α), res.c_ls, res.C_Di
 
     def _calc_controlsurface(self, name, deflections):
         # control surface lift distribution is proportional
@@ -107,48 +89,51 @@ class LiftAnalysis:
         return controllift * fac(deflections[0]) \
                 + controllift.flip() * fac(deflections[1])
 
-def calculate(wing, alpha=None, C_L=None, controls={}, airbrake=False, M=None, method='multhop', airfoil_db:dict=defaultdict(AirfoilData),
-    calc_cmx=False):
+    def __call__(self, target=0.0, target_type='C_L', controls={}, airbrake=False):
         
-        ys = _calc_gridpoints(wing, M)
+        from .multhop import MulthopResult
 
-        try:
-            calculator = _calculator_dict[method](wing, ys, airfoil_db)
-        except:
-            raise Exception('{} is not implemented yet!'.format(method))
+        C_L = -target if target_type == 'C_L' else 0.0
 
-        base_res = calculator.baselift()
+        def zly(): return np.zeros_like(self.ys)
 
-        if airbrake:
-            base_res += calculator.airbrakelift()
+        res = MulthopResult(self.ys, zly(), zly(), C_L, 0.0)
 
-        for name, (η_r, η_l) in controls.items():
-            base_res += calculator.controlsurfacelift(name, η_r)
-            base_res += calculator.controlsurfacelift(name, η_l).flip()
+        # collect contributions to lift distribution
+        res += self._base
 
-        if alpha is not None:
-            base_res += calculator.aoa(alpha)
+        if airbrake: 
+            res += self._airbrake
 
-            if C_L is not None:
-                raise Warning('C_L value is ignored because aoa is defined!')
+        for cs in controls.items():
+            res += self._calc_controlsurface(*cs)
 
-        elif C_L is not None:
-            res_aoa = calculator.aoa(1)
+        # choose angle of attack
+        if target_type == 'C_L':
+            α = -res.C_L / self._aoa.C_L
+        else:
+            α = target
 
-            C_L -= base_res.C_L
+        res += α * self._aoa
 
-            alpha = C_L/res_aoa.C_L
+        return α, res
 
-            base_res += alpha * res_aoa
 
-        additional = {}
-
-        if calc_cmx:
-            # Moment coefficient in flight direction
-            A = wing.area
-            b = wing.span
-            C_Mx = np.trapz(ys*base_res.c_ls*calculator.chords, ys)/ (A*b)
-
-            additional['C_Mx'] = C_Mx
+def calculate(wing, target=0.0, target_type='C_L', controls={}, airbrake=False, M=None, 
+        method='multhop', airfoil_db:dict=defaultdict(AirfoilData), calc_cmx=False):
         
-        return {'c_ls': base_res.c_ls, 'a_is': base_res.α_is, 'C_L': base_res.C_L, 'alpha': np.rad2deg(alpha), **additional}
+    la = LiftAnalysis.generate(wing, airfoil_db, M, method)
+
+    α, res = la(target, target_type, controls, airbrake)
+
+    additional = {}
+
+    if calc_cmx:
+        # Moment coefficient in flight direction
+        A = wing.area
+        b = wing.span
+        C_Mx = np.trapz(la.ys*res.c_ls*la.chords, la.ys)/ (A*b)
+
+        additional['C_Mx'] = C_Mx
+    
+    return {'c_ls': res.c_ls, 'a_is': res.α_is, 'C_L': res.C_L, 'alpha': np.rad2deg(α), **additional}
