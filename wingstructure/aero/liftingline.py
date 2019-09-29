@@ -93,7 +93,7 @@ class LiftAnalysis:
         
         from .multhop import MulthopResult
 
-        C_L = -target if target_type == 'C_L' else 0.0
+        C_L = -target if target_type=='C_L' else 0.0
 
         def zly(): return np.zeros_like(self.ys)
 
@@ -115,6 +115,8 @@ class LiftAnalysis:
             α = target
 
         res += α * self._aoa
+
+        res.C_L += target if target_type=='C_L' else 0.0
 
         return α, res
 
