@@ -65,6 +65,9 @@ class LiftAnalysis:
                                                      for name in wing.controlsurfaces.keys()}
         analysis.chords = calculator.chords
 
+        analysis._area = wing.area
+        analysis._spanwidth = wing.span
+
         return analysis
 
     def __init__(self):
@@ -74,12 +77,23 @@ class LiftAnalysis:
         self._airbrake = None
         self._aoa = None
         self._control_surfaces = {}
+
+        self._area = 0.0
+        self._spanwidth = 0.0
     
-    def calculate(self, C_L, controls:dict={}, airbrake:bool=False):
+    def calculate(self, C_L, controls:dict={}, airbrake:bool=False, all_results:bool=False):
         
         α, res = self.__call__(C_L, 'C_L', controls, airbrake)
 
-        return np.rad2deg(α), res.c_ls, res.C_Di
+        if all_results:
+            # Moment coefficient in flight direction
+            A = self._area
+            b = self._spanwidth
+            C_Mx = np.trapz(self.ys*res.c_ls*self.chords, self.ys)/ (A*b)
+
+            return np.rad2deg(α), res.c_ls, res.C_Di, C_Mx
+
+        return np.rad2deg(α), res.c_ls
 
     def _calc_controlsurface(self, name, deflections):
         # control surface lift distribution is proportional
