@@ -141,8 +141,8 @@ class LiftAnalysis:
 
 def calculate(wing, target=0.0, target_type='C_L', controls={}, airbrake=False, M=None, 
         method='multhop', airfoil_db:dict=defaultdict(AirfoilData), calc_cmx=False):
-        
-    la = LiftAnalysis.generate(wing, airfoil_db, M, method)
+
+    la = LiftAnalysis.generate(wing, airfoil_db, M=M, method=method)
 
     α, res = la(target, target_type, controls, airbrake)
 
