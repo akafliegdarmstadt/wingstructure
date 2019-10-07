@@ -25,6 +25,8 @@ def test_calculationpoints(d38wing):
 def test_flatwing(d43wing):
     from wingstructure.wingloads import FlatWing
 
+    d43wing.add_controlsurface('aileron', 7.223, 8.0, 0.8, 0.8, 'flap')
+
     flatwing = FlatWing(d43wing)
 
     # check new spanwidth
@@ -33,3 +35,7 @@ def test_flatwing(d43wing):
     assert flatwing.area > d43wing.area
     # mac should decrease
     assert flatwing.mac < d43wing.mac
+
+    # check aileron
+    csflat = flatwing.controlsurfaces['aileron']
+    assert csflat.pos1 == flatwing.sections[-3].pos.y
