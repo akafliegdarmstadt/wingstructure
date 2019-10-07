@@ -11,7 +11,6 @@ def isclose(a, b, tol=1e-5, rtol=1e-5):
 
     return diff<tol and (diff/maxab)<rtol
 
-
 # tests
 
 
@@ -23,18 +22,6 @@ def test_wingbasicprops(d38wing):
     macpos, maclength = d38wing.get_mac()
     assert isclose(maclength, 0.7706271)
     assert isclose(macpos[0], 0.2109074-0.7706271/4)
-
-
-def test_flatwing(d43wing):
-    from wingstructure.data.wing import FlatWing
-    flatwing = FlatWing(d43wing)
-
-    # check new spanwidth
-    assert isclose(flatwing.span, 2*9.0408708357794)
-    # area should have increased
-    assert flatwing.area > d43wing.area
-    # mac should decrease
-    assert flatwing.mac < d43wing.mac
 
 
 def test_properties(d43wing):

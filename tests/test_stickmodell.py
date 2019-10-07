@@ -4,7 +4,8 @@ import numpy as np
 
 @pytest.fixture
 def flatwing():
-    from wingstructure.data.wing import Wing, FlatWing
+    from wingstructure.data.wing import Wing
+    from wingstructure.wingloads import FlatWing
 
     wing = Wing()
     wing.append()

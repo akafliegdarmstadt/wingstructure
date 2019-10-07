@@ -1,4 +1,4 @@
 from . import wing
 
 
-from .wing import Wing, FlatWing, Point
+from .wing import Wing, Point

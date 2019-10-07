@@ -16,7 +16,7 @@ _calculator_dict = {
 
 class LiftAnalysis:
     @classmethod
-    def generate(cls, wing, airfoil_db=defaultdict(AirfoilData), M=None, method='multhop'):
+    def generate(cls, wing, airfoil_db=defaultdict(AirfoilData), method='multhop', grid='default', M=None):
         """Build a LiftAnalysis object
         
         Parameters
@@ -43,12 +43,16 @@ class LiftAnalysis:
             is raised when chosen cacluation method is available
         """
         
-        if M is not None and M%2 != 1:
-            raise ValueError('Number of grid points (M) has to be uneven!')
+        if grid == 'default':
+            if M is not None and M%2 != 1:
+                raise ValueError('Number of grid points (M) has to be uneven!')
 
-        ys = _calc_gridpoints(wing, M)
+            ys = _calc_gridpoints(wing, M)
 
-        ys[len(ys)//2] = 0.0
+            ys[len(ys)//2] = 0.0
+
+        else:
+            ys = grid
 
         try:
             calculator = _calculator_dict[method](wing, ys, airfoil_db)
