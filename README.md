@@ -10,6 +10,12 @@ pip can be used to install the package:
 pip install wingstructure
 ```
 
+For the current development version from master use
+```sh
+pip install https://github.com/akafliegdarmstadt/wingstructure/archive/master.zip
+```
+or git.
+
 ## Usage
 
 wingstructure has three primary functions:
