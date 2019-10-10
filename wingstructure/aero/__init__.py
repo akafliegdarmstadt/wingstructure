@@ -1,4 +1,4 @@
-from . import liftingline, nnliftingline, polarinterp
+from . import liftingline, nnliftingline
 
 from .liftingline import AirfoilData, LiftAnalysis, calculate
 
