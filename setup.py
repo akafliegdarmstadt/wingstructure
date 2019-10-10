@@ -12,7 +12,7 @@ setup(name='wingstructure',
     version=version['__version__'],
     description='A library for structure calculations in airplane wings',
     url='https://github.com/akafliegdarmstadt/wingstructure',
-    author='helo',
+    author='Akaflieg Darmstadt',
     author_email='kontakt@akaflieg.tu-darmstadt.de',
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -28,11 +28,12 @@ setup(name='wingstructure',
         'sortedcontainers',
         'matplotlib',
         'pytest',
-        'strictyaml',
-        'Shapely',
         'ipython',
         'pandas'
     ],
+    extras_require={
+        'sectionstructure': ["Shapely"]
+    },
     zip_safe=False,
     classifiers=[
         "Programming Language :: Python :: 3",
