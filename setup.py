@@ -28,8 +28,7 @@ setup(name='wingstructure',
         'sortedcontainers',
         'matplotlib',
         'pytest',
-        'ipython',
-        'pandas'
+        'ipython'
     ],
     extras_require={
         'sectionstructure': ["Shapely"]
