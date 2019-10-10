@@ -5,6 +5,7 @@ python:
   - "3.6"
 install:
   - pip install .
+  - pip install shapely
   - pip install python-coveralls
   - pip install pytest-cov
   - pip install nbval
