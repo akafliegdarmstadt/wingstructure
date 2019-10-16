@@ -248,7 +248,7 @@ def get_nodes(wing, ys, chordpos=0.25):
     return interp1d(secy, pos, axis=0)(ys)
 
 
-def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), free_node=0):
+def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), prescribed={0: np.zeros(6)}):
     """Solve static equilibrium in unbranched stick model
     
     Parameters
@@ -267,6 +267,8 @@ def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), fr
     array
         internal loads at nodes [[Qx, Qy Qz, Mx, My, Mz], ...]
     """
+
+    free_node = 2
 
     n = len(nodes)
     A = np.zeros([6*n,6*n])
@@ -293,9 +295,16 @@ def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), fr
         A[idx+5][idx+6] = -ly
 
     # force or moment free boundary conditions
-    for i in range(6):
-        idx = 6*free_node
-        A[6*(n-1) + i][6*free_node + i] = 1
+    #for i in range(6):
+    #    #idx = 6*free_node
+    #    A[6*(n-1) + i][6*free_node + i] = 1
+
+    for node, prescribed_values in prescribed.items():
+        for i, prescribed_value in enumerate(prescribed_values):
+            if prescribed_value is None:
+                continue
+            A[6*(n-1) + i][6*node + i] = 1
+            b[6*(n-1) + i] = prescribed_value
 
     # right hand side / external loads
     for i in range(n-1):

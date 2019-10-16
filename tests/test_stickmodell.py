@@ -154,22 +154,35 @@ def test_getnodes():
     ).all()
 
 
-def test_solve2Ds():
+def test_solve():
+    """
+    test equilibrium solver
+    """
     from wingstructure.structure.stickmodel import solve_equilibrium
 
+    # straight bar with two segments, along y-direction
     nodes = np.array([[0,0,0], [0,1,0], [0,2,0]])
+
+    # two forces acting on bar
+    # first one: middle of first segment, magnitue sqrt(2), angle 45°
+    # second one: middle of second segment, magnitue 2 in z direction
     forces = np.array([
         [0, 0.5, 0, 0, 1, 1, 0],
         [0, 1.5, 0, 0, 0, 2, 1]
     ])
 
+    # two discrete moments acting on bar
+    # first one: magnitude 1 at first segment (index 0)
+    # second one: magnitude 2 at second segment (index 1)
     moments = np.array([
         [0, 0, 1, 0],
         [0, 0, 2, 1]
     ])
 
-    sol = solve_equilibrium(nodes, forces, moments, free_node=2)
+    # actual solving, setting forces and moments at node 2 to zero (prescribed)
+    sol = solve_equilibrium(nodes, forces, moments, prescribed={2:np.zeros(6)})
 
+    # check with manual calculation
     assert np.isclose(sol, [
         [0, 1, 3, 3.5, 0, 3],
         [0, 0, 2, 1, 0, 2],
