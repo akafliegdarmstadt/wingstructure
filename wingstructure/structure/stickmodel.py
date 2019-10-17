@@ -268,13 +268,11 @@ def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), pr
         internal loads at nodes [[Qx, Qy Qz, Mx, My, Mz], ...]
     """
 
-    free_node = 2
-
     n = len(nodes)
     A = np.zeros([6*n,6*n])
     b = np.zeros(6*n)
 
-    # equilibrium conditions (-x_0 + x_1 = 0)
+    # equilibrium conditions (-force_node0 + force_node1 = 0, just the same for moments)
     for i in range(6*(n-1)):
         A[i][i] = -1
         A[i][i+6] = 1
@@ -294,19 +292,15 @@ def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), pr
         A[idx+5][idx+7] = lx
         A[idx+5][idx+6] = -ly
 
-    # force or moment free boundary conditions
-    #for i in range(6):
-    #    #idx = 6*free_node
-    #    A[6*(n-1) + i][6*free_node + i] = 1
-
+    # equations for prescribed values
     for node, prescribed_values in prescribed.items():
         for i, prescribed_value in enumerate(prescribed_values):
             if prescribed_value is None:
                 continue
             A[6*(n-1) + i][6*node + i] = 1
-            b[6*(n-1) + i] = prescribed_value
+            b[6*(n-1) + i] = -prescribed_value
 
-    # right hand side / external loads
+    # external loads
     for i in range(n-1):
         # forces
         for l in forces[forces[:,-1] == i]:
@@ -320,6 +314,7 @@ def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), pr
         for m in moments[moments[:,-1] == i]:
             b[6*i+3:6*i+6] += m[:-1]
 
+    # solve the linear system
     x = np.linalg.solve(A, -b)
 
     return np.reshape(x, (len(x)//6, 6))
