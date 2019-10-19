@@ -184,9 +184,9 @@ def test_solve():
 
     # check with manual calculation
     assert np.isclose(sol, [
-        [0, 1, 3, 3.5, 0, 3],
-        [0, 0, 2, 1, 0, 2],
-        [0, 0, 0, 0, 0, 0]
+        [0, 1, 3, 3.5, 1, 3],
+        [0, 0, 2, 1, 1, 2],
+        [0, 0, 0, 0, 1, 0]
     ]).all()
 
 
