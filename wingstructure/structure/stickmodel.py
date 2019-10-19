@@ -259,8 +259,9 @@ def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), pr
         forces with point of attack and segment: [[x, y, z, fx, fy, fz, seg], ...]
     moments: array
         discrete moments [[mx, my, mz, seg], ...]
-    free_node : int
-        designate node without loads
+    prescribed : int
+        node values which are prescribed, a dictionary {node_num: np.array([fx, fy, fz, mx, my, mz]), node_num2:...}
+        every value may only be set at one Node, this value e.g. fx has to be set to np.NaN for every other node
     
     Returns
     -------
@@ -295,7 +296,7 @@ def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), pr
     # equations for prescribed values
     for node, prescribed_values in prescribed.items():
         for i, prescribed_value in enumerate(prescribed_values):
-            if prescribed_value is None:
+            if prescribed_value is np.NaN:
                 continue
             A[6*(n-1) + i][6*node + i] = 1
             b[6*(n-1) + i] = -prescribed_value
