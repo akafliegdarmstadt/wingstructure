@@ -298,7 +298,7 @@ def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), pr
             if prescribed_value is None:
                 continue
             A[6*(n-1) + i][6*node + i] = 1
-            b[6*(n-1) + i] = prescribed_value
+            b[6*(n-1) + i] = -prescribed_value
 
     # external loads
     for i in range(n-1):

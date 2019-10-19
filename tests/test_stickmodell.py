@@ -180,7 +180,7 @@ def test_solve():
     ])
 
     # actual solving, setting forces and moments at node 2 to zero (prescribed)
-    sol = solve_equilibrium(nodes, forces, moments, prescribed={2:[0, 0, 0, 0, -1.0, 0]})
+    sol = solve_equilibrium(nodes, forces, moments, prescribed={2:[0, 0, 0, 0, 1.0, 0]})
 
     # check with manual calculation
     assert np.isclose(sol, [
