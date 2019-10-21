@@ -16,7 +16,8 @@ _calculator_dict = {
 
 class LiftAnalysis:
     @classmethod
-    def generate(cls, wing, airfoil_db=defaultdict(AirfoilData), method='multhop', grid='default', M=None):
+    def generate(cls, wing, airfoil_db=defaultdict(AirfoilData), method='multhop', grid='default',
+                 grid_pts=None, M=None):
         """Build a LiftAnalysis object
         
         Parameters
@@ -51,8 +52,10 @@ class LiftAnalysis:
 
             ys[len(ys)//2] = 0.0
 
+        elif grid == 'defined':
+            ys = grid_pts
         else:
-            ys = grid
+            raise Exception(f'Unknown grid argument: {grid}')
 
         try:
             calculator = _calculator_dict[method](wing, ys, airfoil_db)
@@ -60,7 +63,7 @@ class LiftAnalysis:
             raise NotImplementedError('{} is not implemented yet!'.format(method))
 
         analysis = cls()
-
+        
         analysis.ys = ys
         analysis._base = calculator.baselift()
         analysis._airbrake = calculator.airbrakelift()

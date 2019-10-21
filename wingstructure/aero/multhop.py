@@ -147,12 +147,10 @@ def multhop(ys: np.ndarray, αs: np.ndarray, chords: np.ndarray,
         
         chords = solverinput[3]
         
-        import pdb
-        
     else:
         M = len(ys)
 
-        θs = np.arccos(-2* ys/b)
+        θs = np.arccos(-2 * np.array(ys)/b)
 
         γs, α_is = _multhop_solve(θs, αs, chords, dcls, b)
     

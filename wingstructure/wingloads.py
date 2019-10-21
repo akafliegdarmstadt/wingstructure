@@ -81,7 +81,6 @@ def calculation_points(flatwing, M):
     array
         span wise calculation positions
     """
-    from .aero.multhop import _calc_gridpoints
 
     b = flatwing.span
 
