@@ -154,6 +154,11 @@ def test_getnodes():
     ).all()
 
 
+    res2 = get_nodes(awing, ys, chordpos=lambda y: 0.0)
+
+    assert np.isclose(res, res2).all()
+
+
 def test_solve():
     """
     test equilibrium solver

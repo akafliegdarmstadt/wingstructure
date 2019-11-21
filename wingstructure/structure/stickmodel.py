@@ -227,8 +227,9 @@ def get_nodes(wing, ys, chordpos=0.25):
         a object describing a wing
     ys : array
         grid points on flattend span
-    chordpos: float
-        relativ position in chordwise direction
+    chordpos: float or callable
+        relative position in chordwise direction, 
+        callable must be vectorized!
     
     Returns
     -------
@@ -237,15 +238,33 @@ def get_nodes(wing, ys, chordpos=0.25):
     """
     from numpy import diff, linalg
     from scipy.interpolate import interp1d
+     
+    # planform sections in yz plane
+    pos_yz = np.array(
+        [(sec.pos.y, sec.pos.z) for sec in wing.sections]
+    )
 
-    pos = [(sec.pos.x + sec.chord*chordpos, sec.pos.y, sec.pos.z) \
-                for sec in wing.sections]
+    # calculate distances between sections
+    distances = linalg.norm(np.diff(pos_yz[:,:], axis=0, prepend=0), axis=1)
 
-    pos = np.array(pos)
+    # sum um distances
+    distancesums = np.cumsum(distances)
 
-    secy = np.cumsum(linalg.norm(np.diff(pos[:,1:], axis=0, prepend=0), axis=1))
+    # leading edge positions
+    pos = np.array(
+        [(sec.pos.x, sec.pos.y, sec.pos.z) for sec in wing.sections]
+    )
 
-    return interp1d(secy, pos, axis=0)(ys)
+    if callable(chordpos):
+        pos_int = interp1d(distancesums, pos, axis=0)(ys)
+        pos_int[:,0] += chordpos(ys)
+
+        return pos_int
+    else:
+        # shift x coordinate
+        pos[:,0] += np.array([sec.chord*chordpos for sec in wing.sections])
+
+        return interp1d(distancesums, pos, axis=0)(ys)
 
 
 def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), prescribed={0: np.zeros(6)}):
