@@ -249,6 +249,8 @@ def get_nodes(wing, ys, chordpos=0.25):
 
     # sum um distances
     distancesums = np.cumsum(distances)
+    
+    print(distancesums)
 
     # leading edge positions
     pos = np.array(
@@ -257,7 +259,8 @@ def get_nodes(wing, ys, chordpos=0.25):
 
     if callable(chordpos):
         pos_int = interp1d(distancesums, pos, axis=0)(ys)
-        pos_int[:,0] += chordpos(ys)
+
+        pos_int[:,0] += interp1d(distancesums, wing.chords)(ys) * chordpos(ys)
 
         return pos_int
     else:
