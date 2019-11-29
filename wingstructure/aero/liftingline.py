@@ -102,6 +102,20 @@ class LiftAnalysis:
 
         return np.rad2deg(α), res.c_ls
 
+    def calculate_aoa(self, aoa, controls:dict={}, airbrake:bool=False, all_results:bool=False):
+        
+        α, res = self.__call__(aoa, 'alpha', controls, airbrake)
+
+        if all_results:
+            # Moment coefficient in flight direction
+            A = self._area
+            b = self._spanwidth
+            C_Mx = np.trapz(self.ys*res.c_ls*self.chords, self.ys)/ (A*b)
+
+            return np.rad2deg(α), res.c_ls, res.C_Di, C_Mx
+
+        return res.C_L, res.c_ls
+
     def _calc_controlsurface(self, name, deflections):
         # control surface lift distribution is proportional
         # to effective deflection not to deflection itself

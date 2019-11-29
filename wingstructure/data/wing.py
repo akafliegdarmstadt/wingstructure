@@ -155,6 +155,10 @@ class Wing(_Wing):
     @property
     def chords(self):
         return np.array([sec.chord for sec in self.sections])
+
+    @property
+    def xs(self):
+        return np.array([sec.pos.x for sec in self.sections])
     
     @property
     def ys(self):
