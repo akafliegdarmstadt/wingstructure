@@ -371,26 +371,47 @@ def internalloads2spar(internalloads, sparnodes):
         
         ns = _get_normal(*sparnodes[i:i+2,:])
         
+        # rotation axis
+        nx = np.array([1,0,0])
+        n_rot = np.cross(ns, nx)
+        
+        n2 = rotmat2(n_rot) @ ns
+        
+        n3 = np.cross(ns, n2)
+        
         # remove x component
-        ns[0] = 0.0
-        ns /= np.linalg.norm(ns)
+        #ns[0] = 0.0
+        #ns /= np.linalg.norm(ns)
 
         # collect all direction vectors
-        n1 = np.array([1.0, 0.0, 0.0])
-        n2 = ns
-        n3 = np.cross(n2, n1)
+        #n1 = np.array([1.0, 0.0, 0.0])
+        #n2 = ns
+        #n3 = np.cross(n2, n1)
 
         # build rotation matrix
-        rotmat = np.vstack((n1,n2,n3)).T
+        #rotmat = np.vstack((n1,n2,n3)).T
 
         # do transformation
-        internalloads[i,:3] = load[:3] @ rotmat
-        internalloads[i, 3:] = load[3:] @ rotmat
+        #internalloads[i,:3] = load[:3] @ rotmat
+        #internalloads[i, 3:] = load[3:] @ rotmat
 
-    return internalloads
+    #return internalloads
 
 def _get_normal(p1, p2):
     n = p2-p1
     n0 = n/np.linalg.norm(n)
 
     return n0
+
+def rotmat2(rotax):
+    
+    n1 = rotax[0]
+    n2 = rotax[1]
+    n3 = rotax[2]
+    
+    c = np.cos(np.pi/2)
+    s = np.sin(np.pi/2)
+
+    R = np.array([[n1**2*(1-c)+c, n1*n2*(1-c)-n3*s, n1*n3*(1-c)+n2*s],
+                [n2*n1*(1-c)+n3*s, n2**2*(1-c)+c, n2*n3*(1-c)-n1*s],
+                [n3*n1*(1-c)-n2*s, n3*n2*(1-c)+n1*s, n3**2*(1-c)+c]])
