@@ -408,3 +408,5 @@ def rotmat2(rotax):
     R = np.array([[n1**2*(1-c)+c, n1*n2*(1-c)-n3*s, n1*n3*(1-c)+n2*s],
                 [n2*n1*(1-c)+n3*s, n2**2*(1-c)+c, n2*n3*(1-c)-n1*s],
                 [n3*n1*(1-c)-n2*s, n3*n2*(1-c)+n1*s, n3**2*(1-c)+c]])
+
+    return R
