@@ -373,16 +373,15 @@ def internalloads2spar(internalloads, sparnodes):
         
         # rotation axis
         nx = np.array([1,0,0])
-        n_rot = np.cross(ns, nx)
+        n_rot = np.cross(nx, ns)
         
         # collect all direction vectors
         n1 = ns
         n2 = rotmat2(n_rot) @ ns
-        n3 = np.cross(ns, n2)
+        n3 = np.cross(n2, n1)
 
         # build rotation matrix
-        rotmat = np.linalg.inv(np.vstack((n2,n1,n3)).T)
-
+        rotmat = np.linalg.inv(np.vstack((n2,n1,n3)))
 
         # do transformation
         internalloads[i,:3] = load[:3] @ rotmat
@@ -402,8 +401,8 @@ def rotmat2(rotax):
     n2 = rotax[1]
     n3 = rotax[2]
     
-    c = np.cos(np.pi/2)
-    s = np.sin(np.pi/2)
+    c = np.cos(-np.pi/2)
+    s = np.sin(-np.pi/2)
 
     R = np.array([[n1**2*(1-c)+c, n1*n2*(1-c)-n3*s, n1*n3*(1-c)+n2*s],
                 [n2*n1*(1-c)+n3*s, n2**2*(1-c)+c, n2*n3*(1-c)-n1*s],

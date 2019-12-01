@@ -213,4 +213,4 @@ def test_2spar():
     val = np.sqrt(2)/2
 
     assert np.isclose(tloads[0,:],
-        [0, val, -val, 0, val, val]).all()
+        [0, val, val, 0, val, -val]).all()
