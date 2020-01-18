@@ -156,7 +156,7 @@ class LiftAnalysis:
         return α, res
 
 
-def calculate(wing, target=0.0, target_type='C_L', controls={}, airbrake=False, M=None, 
+def calculate_lift(wing, target=0.0, target_type='C_L', controls={}, airbrake=False, M=None, 
         method='multhop', airfoil_db:dict=defaultdict(AirfoilData), calc_cmx=False):
 
     la = LiftAnalysis.generate(wing, airfoil_db, M=M, method=method)
@@ -173,4 +173,5 @@ def calculate(wing, target=0.0, target_type='C_L', controls={}, airbrake=False, 
 
         additional['C_Mx'] = C_Mx
     
-    return {'c_ls': res.c_ls, 'a_is': res.α_is, 'C_L': res.C_L, 'alpha': np.rad2deg(α), **additional}
+    return {'c_ls': res.c_ls, 'a_is': res.α_is, 'ys': la.ys,
+            'C_L': res.C_L, 'alpha': np.rad2deg(α), **additional}
