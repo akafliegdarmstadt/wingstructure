@@ -1,33 +1,36 @@
-geometry:
-  wing:
-    sections:
-      - pos:
-          y: 0.0
-        chord: 0.5
-        airfoil: 'NACA0040'
-      - pos:
-          x: 0.5
-          y: 1.0
-        chord: 0.4
-        airfoil: 'NACA0040'
-    'control-surfaces':
-      - name: 'qr1'
-        type: 'flaperon'
-        span-start: 0.5
-        span-end: 0.9
-        chord-pos: 0.8
-  elevator:
-    pos: 
-      x: 6.0
-    scale: 0.5
-    sections:
-      - pos:
-          y: 0.0
-        chord: 0.5
-        airfoil: 'NACA0040'
-      - pos:
-          x: 0.5
-          y: 1.0
-        chord: 0.4
-        airfoil: 'NACA0040'
-        
+wing:
+  pos: {x: 0, y: 0, z: 0}
+  sections:
+    - pos:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+      chord: 0.5
+      airfoil: 'NACA0040'
+    - pos:
+        x: 0.5
+        y: 1.0
+        z: 0.0
+      chord: 0.4
+      airfoil: 'NACA0040'
+  'control-surfaces':
+    - name: 'qr1'
+      type: 'flaperon'
+      span-start: 0.5
+      span-end: 0.9
+      chord-pos: 0.8
+elevator:
+  pos: 
+    x: 6.0
+  scale: 0.5
+  sections:
+    - pos:
+        y: 0.0
+      chord: 0.5
+      airfoil: 'NACA0040'
+    - pos:
+        x: 0.5
+        y: 1.0
+      chord: 0.4
+      airfoil: 'NACA0040'
+      

@@ -1,6 +1,8 @@
 import pytest
 import numpy as np
 
+from wingstructure.data import Wing
+
 from .wings import d38wing, d43wing
 
 # helper functions 
@@ -70,6 +72,14 @@ def test_serialization(d43wing):
     # control surfaces are optional, should not raise any Exception if missing
     del data['controlsurfaces']
     Wing.deserialize(data)
+
+
+def test_load():
+    testwing = Wing.load_from_file('tests/test.yaml')
+
+    assert testwing.sections[0].pos.x==0
+    assert testwing.sections[1].pos.y==1.0
+    assert testwing.sections[1].chord==0.4
 
 
 def test_plot(d43wing):

@@ -199,6 +199,15 @@ class Wing(_Wing):
         return data
 
     @classmethod
+    def load_from_file(cls, filename):
+        import yaml
+        
+        with open(filename, 'r') as datfile:
+            wingdata = yaml.safe_load(datfile)
+        
+        return cls.deserialize(wingdata['wing'])
+
+    @classmethod
     def deserialize(cls, adict):
         """Create new Wing instance from dict
         
@@ -234,7 +243,7 @@ class Wing(_Wing):
         import matplotlib.pyplot as plt
         
         # draw centerline 
-        plt.axvline(x=0, linestyle='-.')
+        #plt.axvline(x=0, linestyle='-.')
         
         # draw sections
         x_positions = []
@@ -246,7 +255,7 @@ class Wing(_Wing):
             y = section.pos.y
             chord = section.chord
             
-            plt.plot((y, y), (-x, -x-chord), 'r')
+            plt.plot((y, y), (x, x+chord), 'r')
             x_positions.append(x)
             y_positions.append(y)
             chord_lengths.append(chord)
@@ -254,12 +263,13 @@ class Wing(_Wing):
         y_positions = np.array(y_positions)
         
         # draw leading edge
-        plt.plot(y_positions, -1*np.array(x_positions), 'b' )
+        plt.plot(y_positions, np.array(x_positions), 'b' )
         # draw trailing edge
-        plt.plot(y_positions, -1*np.array(x_positions)-np.array(chord_lengths), 'b')
+        plt.plot(y_positions, np.array(x_positions)+np.array(chord_lengths), 'b')
         
         # format 
         plt.axis('equal')
         plt.axis('off')
-        plt.xlim(-1, max(y_positions)+1)
+        plt.gca().invert_yaxis()
+        plt.xlim(-max(y_positions)/100, max(y_positions)+1)
 
