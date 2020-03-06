@@ -173,5 +173,5 @@ def calculate_lift(wing, target=0.0, target_type='C_L', controls={}, airbrake=Fa
 
         additional['C_Mx'] = C_Mx
     
-    return {'c_ls': res.c_ls, 'a_is': res.α_is, 'ys': la.ys,
+    return {'c_ls': res.c_ls, 'a_is': res.α_is, 'ys': la.ys, 'chords': la.chords,
             'C_L': res.C_L, 'alpha': np.rad2deg(α), **additional}
