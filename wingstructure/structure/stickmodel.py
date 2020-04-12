@@ -1,5 +1,161 @@
 import numpy as np
+from matplotlib import pyplot as plt
 
+
+class Stickmodel:
+    """Object for representation and calculation of unbranched Beam structures"""
+
+    def __init__(self, nodes:np.ndarray, forces:dict=None, moments:dict=None, prescribed:dict=None,
+                 use_local_coordinate_system:bool=True):
+        
+        self.nodes = nodes
+        self.acting_forces = {} if forces is None else forces
+        self.acting_moments = {} if moments is None else moments
+        self.prescribed = {} if prescribed is None else prescribed
+
+        self.resulting_forces = None
+        self.resulting_moments = None
+
+        self._use_local_coordinate_system = use_local_coordinate_system
+
+        self.auto_updates = False
+
+        self._update()
+
+    def add_discreteforces(self, name:str, discrete_forces:np.ndarray):
+        if name in self.acting_forces.keys():
+            raise AttributeError(f'forces with key {name} exist already!')
+
+        self.acting_forces[name] = discrete_forces
+
+        self._update()
+
+    def add_discretemoments(self, name:str, discrete_moments:np.ndarray):
+        if name in self.acting_moments.keys():
+            raise AttributeError(f'moments with key {name} exist already!')
+
+        self.acting_moments[name] = discrete_moments
+
+        self._update()
+
+    def set_local_coordinatesystem(self, use_local_coordinate_system:bool):
+        self._use_local_coordinate_system = use_local_coordinate_system
+
+        self._update()
+
+    def _update(self):
+        if self.auto_updates:
+            self.update()
+
+    def update(self):
+
+        n = len(self.nodes)
+        A = np.zeros([6*n,6*n])
+        b = np.zeros(6*n)
+
+        # equilibrium conditions (-force_node0 + force_node1 = 0, just the same for moments)
+        for i in range(6*(n-1)):
+            A[i][i] = -1
+            A[i][i+6] = 1
+
+        # moments resulting from internal forces
+        for i in range(n-1):
+            lx, ly, lz = self.nodes[i+1] - self.nodes[i]
+            idx = 6*i
+
+            ## cross product lever x internal force
+            A[idx+3][idx+7] = -lz
+            A[idx+3][idx+8] = ly
+
+            A[idx+4][idx+6] = lz
+            A[idx+4][idx+8] = -lx
+
+            A[idx+5][idx+7] = lx
+            A[idx+5][idx+6] = -ly
+
+        # equations for prescribed values
+        for node, prescribed_values in self.prescribed.items():
+            for i, prescribed_value in enumerate(prescribed_values):
+                if prescribed_value is np.NaN:
+                    continue
+                A[6*(n-1) + i][6*node + i] = 1
+                b[6*(n-1) + i] = -prescribed_value
+
+        try:
+            acting_force_array = np.vstack([
+                part for part in self.acting_forces.values()
+            ])
+
+            acting_moment_array = np.vstack([
+                part for part in self.acting_moments.values()
+            ])
+        except:
+            raise ValueError("forces and/or moments are not given in correct form")
+
+        # external loads
+        for i in range(n-1):
+            # forces
+            forces_on_current_element = \
+                 acting_force_array[acting_force_array[:,-1] == i]
+            for l in forces_on_current_element:
+                # force
+                b[6*i:6*i+3] += l[3:-1]
+        
+                # resulting moment (cross product)
+                M = np.cross(l[:3] - self.nodes[i], l[3:-1]) 
+                b[6*i+3:6*i+6] += M
+
+            # moments
+            moments_on_current_element = \
+                acting_moment_array[acting_moment_array[:,-1] == i]
+            for m in moments_on_current_element:
+                b[6*i+3:6*i+6] += m[:-1]
+
+        # solve the linear equation system
+        x = np.linalg.solve(A, -b)
+
+        x = np.reshape(x, (len(x)//6, 6))
+
+        if self._use_local_coordinate_system:
+            x = internalloads2spar(x, self.nodes)
+        
+        self.resulting_forces = x[:, :3]
+        self.resulting_moments = x[:, 3:]
+
+    def plot_acting_loads(self, fig=None, clear=True):
+        if fig is None:
+            fig = plt.figure()
+        elif clear:
+            plt.clf()
+            
+        ax = fig.gca(projection='3d')
+        
+        self._plot_nodes(ax)
+        self._plot_forces(ax)
+        
+        plt.show()
+
+    def _plot_nodes(self, ax):
+        
+        X = self.nodes[:, 0]
+        Y = self.nodes[:, 1]
+        Z = self.nodes[:, 2]
+        
+        ax.plot(X, Y, Z, 'k+-')
+
+        max_range = np.array([X.max()-X.min(), Y.max()-Y.min(), Z.max()-Z.min()]).max() / 2.0
+
+        mid_x = (X.max()+X.min()) * 0.5
+        mid_y = (Y.max()+Y.min()) * 0.5
+        mid_z = (Z.max()+Z.min()) * 0.5
+        ax.set_xlim(mid_x - max_range, mid_x + max_range)
+        ax.set_ylim(mid_y - max_range, mid_y + max_range)
+        ax.set_zlim(mid_z - max_range, mid_z + max_range)
+
+    def _plot_forces(self, ax):
+        for i, (force_type, forces) in enumerate(self.acting_forces.items()):
+            print(f'{force_type} - {i}')
+            ax.quiver(*forces[:,:3].T, *forces[:,3:-1].T*1e-2, color='C{:02d}'.format(i))     
 
 def calc_lineloadresultants(ys, q):
     """Calculate resultants of loads for piecewise linear load distributin
@@ -269,78 +425,6 @@ def get_nodes(wing, ys, chordpos=0.25):
 
         return interp1d(distancesums, pos, axis=0)(ys)
 
-
-def solve_equilibrium(nodes, forces=np.zeros((1,7)), moments=np.zeros((1,4)), prescribed={0: np.zeros(6)}):
-    """Solve static equilibrium in unbranched stick model
-    
-    Parameters
-    ----------
-    nodes : array
-        coordinates of nodes: [[x, y, z], ...]
-    forces : array
-        forces with point of attack and segment: [[x, y, z, fx, fy, fz, seg], ...]
-    moments: array
-        discrete moments [[mx, my, mz, seg], ...]
-    prescribed : int
-        node values which are prescribed, a dictionary {node_num: np.array([fx, fy, fz, mx, my, mz]), node_num2:...}
-        every value may only be set at one Node, this value e.g. fx has to be set to np.NaN for every other node
-    
-    Returns
-    -------
-    array
-        internal loads at nodes [[Qx, Qy Qz, Mx, My, Mz], ...]
-    """
-
-    n = len(nodes)
-    A = np.zeros([6*n,6*n])
-    b = np.zeros(6*n)
-
-    # equilibrium conditions (-force_node0 + force_node1 = 0, just the same for moments)
-    for i in range(6*(n-1)):
-        A[i][i] = -1
-        A[i][i+6] = 1
-
-    # moments resulting from internal forces
-    for i in range(n-1):
-        lx, ly, lz = nodes[i+1] - nodes[i]
-        idx = 6*i
-
-        ## cross product lever x internal force
-        A[idx+3][idx+7] = -lz
-        A[idx+3][idx+8] = ly
-
-        A[idx+4][idx+6] = lz
-        A[idx+4][idx+8] = -lx
-
-        A[idx+5][idx+7] = lx
-        A[idx+5][idx+6] = -ly
-
-    # equations for prescribed values
-    for node, prescribed_values in prescribed.items():
-        for i, prescribed_value in enumerate(prescribed_values):
-            if prescribed_value is np.NaN:
-                continue
-            A[6*(n-1) + i][6*node + i] = 1
-            b[6*(n-1) + i] = -prescribed_value
-
-    # external loads
-    for i in range(n-1):
-        # forces
-        for l in forces[forces[:,-1] == i]:
-            # force
-            b[6*i:6*i+3] += l[3:-1]
-    
-            # resulting moment (cross product)
-            M = np.cross(l[:3] - nodes[i], l[3:-1]) 
-            b[6*i+3:6*i+6] += M
-        # moments
-        for m in moments[moments[:,-1] == i]:
-            b[6*i+3:6*i+6] += m[:-1]
-
-    # solve the linear system
-    x = np.linalg.solve(A, -b)
-
-    return np.reshape(x, (len(x)//6, 6))
 
 
 def internalloads2spar(internalloads, sparnodes):
