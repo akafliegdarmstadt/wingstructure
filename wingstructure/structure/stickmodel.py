@@ -6,7 +6,7 @@ class Stickmodel:
     """Object for representation and calculation of unbranched Beam structures"""
 
     def __init__(self, nodes:np.ndarray, forces:dict=None, moments:dict=None, prescribed:dict=None,
-                 use_local_coordinate_system:bool=True):
+                 use_local_coordinate_system:bool=True, do_auto_updates:bool=True):
         
         self.nodes = nodes
         self.acting_forces = {} if forces is None else forces
@@ -18,7 +18,7 @@ class Stickmodel:
 
         self._use_local_coordinate_system = use_local_coordinate_system
 
-        self.auto_updates = False
+        self.auto_updates = True
 
         self._update()
 

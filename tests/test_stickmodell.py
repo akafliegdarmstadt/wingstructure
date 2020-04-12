@@ -163,7 +163,7 @@ def test_solve():
     """
     test equilibrium solver
     """
-    from wingstructure.structure.stickmodel import solve_equilibrium
+    from wingstructure.structure.stickmodel import Stickmodel
 
     # straight bar with two segments, along y-direction
     nodes = np.array([[0,0,0], [0,1,0], [0,2,0]])
@@ -185,7 +185,10 @@ def test_solve():
     ])
 
     # actual solving, setting forces and moments at node 2 to zero (prescribed)
-    sol = solve_equilibrium(nodes, forces, moments, prescribed={2:[0, 0, 0, 0, 1.0, 0]})
+    model = Stickmodel(nodes, {'forcename':forces}, {'momentname':moments}, prescribed={2:[0, 0, 0, 0, 1.0, 0]}, 
+                     use_local_coordinate_system=False)
+
+    sol = np.hstack([model.resulting_forces, model.resulting_moments])
 
     # check with manual calculation
     assert np.isclose(sol, [
