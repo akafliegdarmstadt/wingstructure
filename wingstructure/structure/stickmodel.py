@@ -20,8 +20,6 @@ class Stickmodel:
 
         self.auto_updates = True
 
-        self._update()
-
     def add_discreteforces(self, name:str, discrete_forces:np.ndarray):
         if name in self.acting_forces.keys():
             raise AttributeError(f'forces with key {name} exist already!')
@@ -45,7 +43,11 @@ class Stickmodel:
 
     def _update(self):
         if self.auto_updates:
-            self.update()
+            try:
+                self.update()
+            except:
+                self.resulting_moments = None
+                self.resulting_moments = None
 
     def update(self):
 
